@@ -1,0 +1,20 @@
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Java
+*.class
+
+# Frontend (dung sau nay)
+node_modules/
+dist/
+
+# Backend
+backend/target/
