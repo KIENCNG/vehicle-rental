@@ -1,4 +1,3 @@
-
 package com.vehiclerental.service;
 
 import com.vehiclerental.model.HopDongThue;
@@ -31,25 +30,40 @@ public class HopDongThueService {
         this.phuongTienRepository = phuongTienRepository;
     }
 
+    // Lấy tất cả hợp đồng
     public List<HopDongThue> layTatCa() {
         return hopDongRepository.findAll();
     }
 
+    // Tìm hợp đồng theo ID
     public HopDongThue timTheoId(Long id) {
+        if (id == null || id <= 0) {
+            throw new IllegalArgumentException("ID hợp đồng không hợp lệ");
+        }
+
         return hopDongRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Không tìm thấy hợp đồng có ID: " + id));
     }
 
+    // Tìm hợp đồng theo khách hàng
     public List<HopDongThue> timTheoKhachHang(Long khachHangId) {
+        if (khachHangId == null || khachHangId <= 0) {
+            throw new IllegalArgumentException("ID khách hàng không hợp lệ");
+        }
+
         return hopDongRepository.findByKhachHangId(khachHangId);
     }
 
+    // Thêm hợp đồng mới
     public HopDongThue them(
             Long khachHangId,
             Long phuongTienId,
             LocalDate ngayThue,
             LocalDate ngayTra) {
+
+        kiemTraId(khachHangId, phuongTienId);
+        kiemTraNgay(ngayThue, ngayTra);
 
         KhachHang khachHang = khachHangRepository.findById(khachHangId)
                 .orElseThrow(() -> new IllegalArgumentException(
@@ -59,7 +73,6 @@ public class HopDongThueService {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Không tìm thấy phương tiện có ID: " + phuongTienId));
 
-        kiemTraNgay(ngayThue, ngayTra);
         kiemTraTrungLich(phuongTienId, ngayThue, ngayTra);
 
         HopDongThue hopDong = new HopDongThue(
@@ -71,6 +84,7 @@ public class HopDongThueService {
         return hopDongRepository.save(hopDong);
     }
 
+    // Cập nhật thông tin hợp đồng
     public HopDongThue capNhat(
             Long id,
             Long khachHangId,
@@ -86,6 +100,9 @@ public class HopDongThueService {
                     "Không thể sửa hợp đồng đã hủy hoặc đã trả");
         }
 
+        kiemTraId(khachHangId, phuongTienId);
+        kiemTraNgay(ngayThue, ngayTra);
+
         KhachHang khachHang = khachHangRepository.findById(khachHangId)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Không tìm thấy khách hàng có ID: " + khachHangId));
@@ -94,7 +111,6 @@ public class HopDongThueService {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Không tìm thấy phương tiện có ID: " + phuongTienId));
 
-        kiemTraNgay(ngayThue, ngayTra);
         kiemTraTrungLich(phuongTienId, ngayThue, ngayTra, id);
 
         hopDong.setKhachHang(khachHang);
@@ -106,8 +122,10 @@ public class HopDongThueService {
         return hopDongRepository.save(hopDong);
     }
 
+    // Cập nhật trạng thái hợp đồng
     public HopDongThue capNhatTrangThai(
-            Long id, TrangThaiHopDong trangThaiMoi) {
+            Long id,
+            TrangThaiHopDong trangThaiMoi) {
 
         HopDongThue hopDong = timTheoId(id);
 
@@ -116,16 +134,46 @@ public class HopDongThueService {
                     "Trạng thái hợp đồng không được để trống");
         }
 
+        TrangThaiHopDong trangThaiHienTai = hopDong.getTrangThai();
+
+        // Nếu trạng thái không thay đổi thì giữ nguyên hợp đồng
+        if (trangThaiHienTai == trangThaiMoi) {
+            return hopDong;
+        }
+
+        // Hợp đồng đã trả hoặc đã hủy không được mở lại
+        if (trangThaiHienTai != TrangThaiHopDong.DANG_THUE) {
+            throw new IllegalArgumentException(
+                    "Không thể thay đổi trạng thái hợp đồng đã trả hoặc đã hủy");
+        }
+
         hopDong.setTrangThai(trangThaiMoi);
+
         return hopDongRepository.save(hopDong);
     }
 
+    // Xóa hợp đồng
     public void xoa(Long id) {
         HopDongThue hopDong = timTheoId(id);
         hopDongRepository.delete(hopDong);
     }
 
-    private void kiemTraNgay(LocalDate ngayThue, LocalDate ngayTra) {
+    // Kiểm tra ID
+    private void kiemTraId(Long khachHangId, Long phuongTienId) {
+        if (khachHangId == null || khachHangId <= 0) {
+            throw new IllegalArgumentException("ID khách hàng không hợp lệ");
+        }
+
+        if (phuongTienId == null || phuongTienId <= 0) {
+            throw new IllegalArgumentException("ID phương tiện không hợp lệ");
+        }
+    }
+
+    // Kiểm tra ngày thuê và ngày trả
+    private void kiemTraNgay(
+            LocalDate ngayThue,
+            LocalDate ngayTra) {
+
         if (ngayThue == null || ngayTra == null) {
             throw new IllegalArgumentException(
                     "Ngày thuê và ngày trả không được để trống");
@@ -137,13 +185,16 @@ public class HopDongThueService {
         }
     }
 
+    // Kiểm tra trùng lịch khi tạo hợp đồng
     private void kiemTraTrungLich(
             Long phuongTienId,
             LocalDate ngayThue,
             LocalDate ngayTra) {
+
         kiemTraTrungLich(phuongTienId, ngayThue, ngayTra, null);
     }
 
+    // Kiểm tra trùng lịch khi tạo hoặc cập nhật hợp đồng
     private void kiemTraTrungLich(
             Long phuongTienId,
             LocalDate ngayThue,
@@ -154,15 +205,19 @@ public class HopDongThueService {
                 hopDongRepository.findByPhuongTienId(phuongTienId);
 
         for (HopDongThue hopDong : hopDongs) {
+
+            // Bỏ qua hợp đồng đang được cập nhật
             if (boQuaHopDongId != null
-                    && hopDong.getId().equals(boQuaHopDongId)) {
+                    && boQuaHopDongId.equals(hopDong.getId())) {
                 continue;
             }
 
+            // Chỉ hợp đồng đang thuê mới chiếm lịch
             if (hopDong.getTrangThai() != TrangThaiHopDong.DANG_THUE) {
                 continue;
             }
 
+            // Hai khoảng thời gian bị trùng nếu giao nhau
             boolean biTrung =
                     ngayThue.isBefore(hopDong.getNgayTra())
                             && ngayTra.isAfter(hopDong.getNgayThue());
