@@ -1,7 +1,15 @@
-
 package com.vehiclerental.model;
 
-import jakarta.persistence.*;
+import com.vehiclerental.utils.ValidationUtils;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Inheritance;
+import jakarta.persistence.InheritanceType;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "phuong_tien")
@@ -21,16 +29,26 @@ public abstract class PhuongTien {
     @Column(nullable = false)
     private double giaThueNgay;
 
-    public PhuongTien() {
+    protected PhuongTien() {
     }
 
     public PhuongTien(String bienSo, String hangXe, double giaThueNgay) {
-        this.bienSo = bienSo;
-        this.hangXe = hangXe;
-        this.giaThueNgay = giaThueNgay;
+        setBienSo(bienSo);
+        setHangXe(hangXe);
+        setGiaThueNgay(giaThueNgay);
     }
 
+    // Mỗi loại xe tự quyết định cách tính tiền (đa hình)
     public abstract double tinhGiaThue(int soNgay);
+
+    // Mỗi loại xe tự khai báo mình là loại nào (trả về JSON dưới dạng "loaiXe")
+    public abstract String getLoaiXe();
+
+    protected void kiemTraSoNgay(int soNgay) {
+        if (soNgay <= 0) {
+            throw new IllegalArgumentException("Số ngày thuê phải lớn hơn 0");
+        }
+    }
 
     public Long getId() {
         return id;
@@ -41,7 +59,7 @@ public abstract class PhuongTien {
     }
 
     public void setBienSo(String bienSo) {
-        this.bienSo = bienSo;
+        this.bienSo = ValidationUtils.bienSoHopLe(bienSo);
     }
 
     public String getHangXe() {
@@ -49,7 +67,7 @@ public abstract class PhuongTien {
     }
 
     public void setHangXe(String hangXe) {
-        this.hangXe = hangXe;
+        this.hangXe = ValidationUtils.chuoiKhongRong(hangXe, "Hãng xe", 50);
     }
 
     public double getGiaThueNgay() {
@@ -57,6 +75,6 @@ public abstract class PhuongTien {
     }
 
     public void setGiaThueNgay(double giaThueNgay) {
-        this.giaThueNgay = giaThueNgay;
+        this.giaThueNgay = ValidationUtils.soDuong(giaThueNgay, "Giá thuê ngày");
     }
 }

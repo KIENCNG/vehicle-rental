@@ -1,5 +1,6 @@
-
 package com.vehiclerental.model;
+
+import com.vehiclerental.utils.ValidationUtils;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -11,30 +12,35 @@ import jakarta.persistence.Table;
 @PrimaryKeyJoinColumn(name = "id")
 public class OTo extends PhuongTien {
 
+    private static final double PHI_BAO_HIEM = 0.10;
+
     @Column(nullable = false)
     private int soCho;
 
     @Column(nullable = false)
     private String loaiNhienLieu;
 
-    public OTo() {
+    protected OTo() {
     }
 
     public OTo(String bienSo, String hangXe, double giaThueNgay,
                int soCho, String loaiNhienLieu) {
         super(bienSo, hangXe, giaThueNgay);
-        this.soCho = soCho;
-        this.loaiNhienLieu = loaiNhienLieu;
+        setSoCho(soCho);
+        setLoaiNhienLieu(loaiNhienLieu);
+    }
+
+    // Ô tô: tiền thuê cộng thêm 10% phí bảo hiểm
+    @Override
+    public double tinhGiaThue(int soNgay) {
+        kiemTraSoNgay(soNgay);
+        double tien = getGiaThueNgay() * soNgay * (1 + PHI_BAO_HIEM);
+        return Math.round(tien);
     }
 
     @Override
-    public double tinhGiaThue(int soNgay) {
-        if (soNgay <= 0) {
-            throw new IllegalArgumentException("So ngay thue phai lon hon 0");
-        }
-
-        double tienThue = getGiaThueNgay() * soNgay;
-        return tienThue * 1.10;
+    public String getLoaiXe() {
+        return "OTO";
     }
 
     public int getSoCho() {
@@ -42,7 +48,7 @@ public class OTo extends PhuongTien {
     }
 
     public void setSoCho(int soCho) {
-        this.soCho = soCho;
+        this.soCho = ValidationUtils.soTrongKhoang(soCho, 2, 50, "Số chỗ");
     }
 
     public String getLoaiNhienLieu() {
@@ -50,6 +56,6 @@ public class OTo extends PhuongTien {
     }
 
     public void setLoaiNhienLieu(String loaiNhienLieu) {
-        this.loaiNhienLieu = loaiNhienLieu;
+        this.loaiNhienLieu = ValidationUtils.chuoiKhongRong(loaiNhienLieu, "Loại nhiên liệu", 30);
     }
 }
