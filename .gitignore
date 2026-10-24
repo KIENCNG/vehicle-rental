@@ -18,3 +18,14 @@ dist/
 
 # Backend
 backend/target/
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Broken backup
+frontend/src/App.jsx.broken
