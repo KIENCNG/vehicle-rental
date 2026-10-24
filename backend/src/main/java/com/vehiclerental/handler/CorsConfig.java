@@ -1,4 +1,4 @@
-package com.vehiclerental.config;
+package com.vehiclerental.handler;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,7 +18,7 @@ public class CorsConfig {
                                 "http://localhost:5173",
                                 "http://localhost:5174"
                         )
-                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                        .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                         .allowedHeaders("*");
             }
         };
