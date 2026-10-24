@@ -1,10 +1,10 @@
-
 package com.vehiclerental.handler;
 
 import com.vehiclerental.dto.HopDongThueRequest;
 import com.vehiclerental.model.HopDongThue;
-import com.vehiclerental.model.TrangThaiHopDong;
 import com.vehiclerental.service.HopDongThueService;
+import com.vehiclerental.service.exception.KhongTimThayException;
+import com.vehiclerental.service.exception.NghiepVuException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -30,17 +30,23 @@ public class HopDongThueHandler {
     public ResponseEntity<?> timTheoId(@PathVariable Long id) {
         try {
             return ResponseEntity.ok(hopDongService.timTheoId(id));
-        } catch (IllegalArgumentException e) {
+        } catch (KhongTimThayException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
     @GetMapping("/khach-hang/{khachHangId}")
     public ResponseEntity<?> timTheoKhachHang(
             @PathVariable Long khachHangId) {
-        return ResponseEntity.ok(
-                hopDongService.timTheoKhachHang(khachHangId));
+        try {
+            return ResponseEntity.ok(
+                    hopDongService.timTheoKhachHang(khachHangId));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @PostMapping
@@ -54,7 +60,7 @@ public class HopDongThueHandler {
                     request.getNgayTra());
 
             return ResponseEntity.status(HttpStatus.CREATED).body(hopDong);
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | NghiepVuException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (ArithmeticException e) {
             return ResponseEntity.badRequest()
@@ -75,12 +81,10 @@ public class HopDongThueHandler {
                     request.getNgayTra());
 
             return ResponseEntity.ok(hopDong);
-        } catch (IllegalArgumentException e) {
-            if (e.getMessage().startsWith("Không tìm thấy hợp đồng")) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(e.getMessage());
-            }
-
+        } catch (KhongTimThayException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(e.getMessage());
+        } catch (IllegalArgumentException | NghiepVuException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (ArithmeticException e) {
             return ResponseEntity.badRequest()
@@ -101,12 +105,10 @@ public class HopDongThueHandler {
             return ResponseEntity.ok(
                     hopDongService.capNhatTrangThai(
                             id, request.getTrangThai()));
-        } catch (IllegalArgumentException e) {
-            if (e.getMessage().startsWith("Không tìm thấy hợp đồng")) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(e.getMessage());
-            }
-
+        } catch (KhongTimThayException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(e.getMessage());
+        } catch (IllegalArgumentException | NghiepVuException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
@@ -116,9 +118,11 @@ public class HopDongThueHandler {
         try {
             hopDongService.xoa(id);
             return ResponseEntity.noContent().build();
-        } catch (IllegalArgumentException e) {
+        } catch (KhongTimThayException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 }

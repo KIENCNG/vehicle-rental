@@ -1,4 +1,3 @@
-
 package com.vehiclerental.model;
 
 import jakarta.persistence.Column;
@@ -123,6 +122,23 @@ public class HopDongThue {
         }
 
         this.ngayTra = ngayTra;
+    }
+
+    // Đổi cả hai ngày cùng lúc: kiểm tra theo cặp ngày MỚI,
+    // không so với ngày cũ còn sót lại
+    public void capNhatThoiGianThue(LocalDate ngayThueMoi, LocalDate ngayTraMoi) {
+        if (ngayThueMoi == null || ngayTraMoi == null) {
+            throw new IllegalArgumentException(
+                    "Ngày thuê và ngày trả không được để trống");
+        }
+
+        if (!ngayTraMoi.isAfter(ngayThueMoi)) {
+            throw new IllegalArgumentException(
+                    "Ngày trả phải sau ngày thuê");
+        }
+
+        this.ngayThue = ngayThueMoi;
+        this.ngayTra = ngayTraMoi;
     }
 
     public long tinhSoNgayThue() {
