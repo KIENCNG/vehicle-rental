@@ -1,9 +1,10 @@
-
 package com.vehiclerental.handler;
 
 import com.vehiclerental.dto.KhachHangRequest;
 import com.vehiclerental.model.KhachHang;
 import com.vehiclerental.service.KhachHangService;
+import com.vehiclerental.service.exception.KhongTimThayException;
+import com.vehiclerental.service.exception.NghiepVuException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -29,7 +30,7 @@ public class KhachHangHandler {
     public ResponseEntity<?> timTheoId(@PathVariable Long id) {
         try {
             return ResponseEntity.ok(khachHangService.timTheoId(id));
-        } catch (IllegalArgumentException e) {
+        } catch (KhongTimThayException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(e.getMessage());
         }
@@ -41,12 +42,11 @@ public class KhachHangHandler {
             KhachHang khachHang = new KhachHang(
                     request.getHoTen(),
                     request.getSoDienThoai(),
-                    request.getDiaChi()
-            );
+                    request.getDiaChi());
 
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(khachHangService.them(khachHang));
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | NghiepVuException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
@@ -59,18 +59,14 @@ public class KhachHangHandler {
             KhachHang khachHangMoi = new KhachHang(
                     request.getHoTen(),
                     request.getSoDienThoai(),
-                    request.getDiaChi()
-            );
+                    request.getDiaChi());
 
             return ResponseEntity.ok(
-                    khachHangService.capNhat(id, khachHangMoi)
-            );
-        } catch (IllegalArgumentException e) {
-            if (e.getMessage().startsWith("Không tìm thấy khách hàng")) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(e.getMessage());
-            }
-
+                    khachHangService.capNhat(id, khachHangMoi));
+        } catch (KhongTimThayException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(e.getMessage());
+        } catch (IllegalArgumentException | NghiepVuException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
@@ -80,9 +76,11 @@ public class KhachHangHandler {
         try {
             khachHangService.xoa(id);
             return ResponseEntity.noContent().build();
-        } catch (IllegalArgumentException e) {
+        } catch (KhongTimThayException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(e.getMessage());
+        } catch (NghiepVuException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 }

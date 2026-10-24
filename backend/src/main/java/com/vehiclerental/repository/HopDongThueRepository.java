@@ -1,4 +1,3 @@
-
 package com.vehiclerental.repository;
 
 import com.vehiclerental.model.HopDongThue;
@@ -14,6 +13,10 @@ public interface HopDongThueRepository
     List<HopDongThue> findByKhachHangId(Long khachHangId);
 
     List<HopDongThue> findByPhuongTienId(Long phuongTienId);
+
+    boolean existsByPhuongTienId(Long phuongTienId);
+
+    boolean existsByKhachHangId(Long khachHangId);
 
     boolean existsByPhuongTienIdAndTrangThaiAndNgayThueLessThanAndNgayTraGreaterThan(
             Long phuongTienId,
