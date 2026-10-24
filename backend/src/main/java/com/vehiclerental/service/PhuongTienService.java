@@ -61,19 +61,8 @@ public class PhuongTienService {
                     "Biển số " + phuongTienMoi.getBienSo() + " đã tồn tại");
         }
 
-        phuongTienCu.setBienSo(phuongTienMoi.getBienSo());
-        phuongTienCu.setHangXe(phuongTienMoi.getHangXe());
-        phuongTienCu.setGiaThueNgay(phuongTienMoi.getGiaThueNgay());
-
-        if (phuongTienCu instanceof OTo xeCu
-                && phuongTienMoi instanceof OTo xeMoi) {
-            xeCu.setSoCho(xeMoi.getSoCho());
-            xeCu.setLoaiNhienLieu(xeMoi.getLoaiNhienLieu());
-        } else if (phuongTienCu instanceof XeMay xeCu
-                && phuongTienMoi instanceof XeMay xeMoi) {
-            xeCu.setDungTichXiLanh(xeMoi.getDungTichXiLanh());
-            xeCu.setKieuXe(xeMoi.getKieuXe());
-        }
+        // Đa hình: mỗi loại xe tự cập nhật thuộc tính của mình
+        phuongTienCu.capNhatTu(phuongTienMoi);
 
         return phuongTienRepository.save(phuongTienCu);
     }

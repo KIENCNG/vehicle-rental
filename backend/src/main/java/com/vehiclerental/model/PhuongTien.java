@@ -44,6 +44,14 @@ public abstract class PhuongTien {
     // Mỗi loại xe tự khai báo mình là loại nào (trả về JSON dưới dạng "loaiXe")
     public abstract String getLoaiXe();
 
+    // Cập nhật thông tin từ một phương tiện khác CÙNG LOẠI.
+    // Lớp cha lo phần chung, lớp con ghi đè để lo phần riêng của mình.
+    public void capNhatTu(PhuongTien nguon) {
+        setBienSo(nguon.getBienSo());
+        setHangXe(nguon.getHangXe());
+        setGiaThueNgay(nguon.getGiaThueNgay());
+    }
+
     protected void kiemTraSoNgay(int soNgay) {
         if (soNgay <= 0) {
             throw new IllegalArgumentException("Số ngày thuê phải lớn hơn 0");

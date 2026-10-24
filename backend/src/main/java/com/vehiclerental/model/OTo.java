@@ -43,6 +43,19 @@ public class OTo extends PhuongTien {
         return "OTO";
     }
 
+    // Ô tô chỉ cập nhật được từ một ô tô khác
+    @Override
+    public void capNhatTu(PhuongTien nguon) {
+        if (!(nguon instanceof OTo oTo)) {
+            throw new IllegalArgumentException(
+                    "Không thể đổi loại phương tiện khi cập nhật");
+        }
+
+        super.capNhatTu(nguon);
+        setSoCho(oTo.getSoCho());
+        setLoaiNhienLieu(oTo.getLoaiNhienLieu());
+    }
+
     public int getSoCho() {
         return soCho;
     }

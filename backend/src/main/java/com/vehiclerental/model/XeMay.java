@@ -47,6 +47,19 @@ public class XeMay extends PhuongTien {
         return "XEMAY";
     }
 
+    // Xe máy chỉ cập nhật được từ một xe máy khác
+    @Override
+    public void capNhatTu(PhuongTien nguon) {
+        if (!(nguon instanceof XeMay xeMay)) {
+            throw new IllegalArgumentException(
+                    "Không thể đổi loại phương tiện khi cập nhật");
+        }
+
+        super.capNhatTu(nguon);
+        setDungTichXiLanh(xeMay.getDungTichXiLanh());
+        setKieuXe(xeMay.getKieuXe());
+    }
+
     public int getDungTichXiLanh() {
         return dungTichXiLanh;
     }
