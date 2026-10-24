@@ -84,6 +84,44 @@ public class HopDongThueService {
         return hopDongRepository.save(hopDong);
     }
 
+    public HopDongThue taoYeuCauThue(
+            Long khachHangId,
+            Long phuongTienId,
+            LocalDate ngayThue,
+            LocalDate ngayTra) {
+
+        if (khachHangId == null || phuongTienId == null) {
+            throw new IllegalArgumentException(
+                    "Khách hàng và phương tiện không được để trống");
+        }
+
+        kiemTraNgay(ngayThue, ngayTra);
+
+        KhachHang khachHang = khachHangRepository
+                .findById(khachHangId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Không tìm thấy khách hàng"));
+
+        PhuongTien phuongTien = phuongTienRepository
+                .findById(phuongTienId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Không tìm thấy phương tiện"));
+
+        kiemTraTrungLich(phuongTienId, ngayThue, ngayTra);
+
+        HopDongThue hopDong = new HopDongThue(
+                khachHang,
+                phuongTien,
+                ngayThue,
+                ngayTra
+        );
+
+        hopDong.setTrangThai(TrangThaiHopDong.CHO_XAC_NHAN);
+
+        return hopDongRepository.save(hopDong);
+    }
+
+
     // Cập nhật thông tin hợp đồng
     public HopDongThue capNhat(
             Long id,
@@ -123,6 +161,8 @@ public class HopDongThueService {
     }
 
     // Cập nhật trạng thái hợp đồng
+
+    // Cập nhật trạng thái hợp đồng
     public HopDongThue capNhatTrangThai(
             Long id,
             TrangThaiHopDong trangThaiMoi) {
@@ -136,13 +176,28 @@ public class HopDongThueService {
 
         TrangThaiHopDong trangThaiHienTai = hopDong.getTrangThai();
 
-        // Nếu trạng thái không thay đổi thì giữ nguyên hợp đồng
         if (trangThaiHienTai == trangThaiMoi) {
             return hopDong;
         }
 
-        // Hợp đồng đã trả hoặc đã hủy không được mở lại
-        if (trangThaiHienTai != TrangThaiHopDong.DANG_THUE) {
+        // Yêu cầu chờ xác nhận: Admin có thể duyệt hoặc hủy
+        if (trangThaiHienTai == TrangThaiHopDong.CHO_XAC_NHAN) {
+            if (trangThaiMoi != TrangThaiHopDong.DANG_THUE
+                    && trangThaiMoi != TrangThaiHopDong.DA_HUY) {
+                throw new IllegalArgumentException(
+                        "Yêu cầu chỉ có thể được xác nhận hoặc hủy");
+            }
+        }
+        // Hợp đồng đang thuê: có thể trả xe hoặc hủy
+        else if (trangThaiHienTai == TrangThaiHopDong.DANG_THUE) {
+            if (trangThaiMoi != TrangThaiHopDong.DA_TRA
+                    && trangThaiMoi != TrangThaiHopDong.DA_HUY) {
+                throw new IllegalArgumentException(
+                        "Hợp đồng đang thuê chỉ có thể trả xe hoặc hủy");
+            }
+        }
+        // Hợp đồng đã trả hoặc đã hủy là trạng thái kết thúc
+        else {
             throw new IllegalArgumentException(
                     "Không thể thay đổi trạng thái hợp đồng đã trả hoặc đã hủy");
         }
@@ -151,6 +206,7 @@ public class HopDongThueService {
 
         return hopDongRepository.save(hopDong);
     }
+
 
     // Xóa hợp đồng
     public void xoa(Long id) {
@@ -212,8 +268,11 @@ public class HopDongThueService {
                 continue;
             }
 
-            // Chỉ hợp đồng đang thuê mới chiếm lịch
-            if (hopDong.getTrangThai() != TrangThaiHopDong.DANG_THUE) {
+// Hợp đồng đang thuê hoặc chờ xác nhận đều chiếm lịch
+            TrangThaiHopDong trangThai = hopDong.getTrangThai();
+
+            if (trangThai != TrangThaiHopDong.DANG_THUE
+                    && trangThai != TrangThaiHopDong.CHO_XAC_NHAN) {
                 continue;
             }
 

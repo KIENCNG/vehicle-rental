@@ -68,6 +68,27 @@ public class HopDongThueHandler {
         }
     }
 
+    @PostMapping("/yeu-cau")
+    public ResponseEntity<?> taoYeuCauThue(
+            @RequestBody HopDongThueRequest request) {
+        try {
+            HopDongThue hopDong = hopDongService.taoYeuCauThue(
+                    request.getKhachHangId(),
+                    request.getPhuongTienId(),
+                    request.getNgayThue(),
+                    request.getNgayTra()
+            );
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(hopDong);
+        } catch (IllegalArgumentException | NghiepVuException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (ArithmeticException e) {
+            return ResponseEntity.badRequest()
+                    .body("Số ngày thuê không hợp lệ");
+        }
+    }
+
+
     @PutMapping("/{id}")
     public ResponseEntity<?> capNhat(
             @PathVariable Long id,

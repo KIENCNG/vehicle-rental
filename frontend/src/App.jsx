@@ -79,13 +79,19 @@ const menu = [
 function App() {
   const [page, setPage] = useState("dashboard");
   const [vehicles, setVehicles] = useState(initialVehicles);
-  const [customers] = useState(initialCustomers);
-  const [contracts] = useState(initialContracts);
+  const [customers, setCustomers] = useState(initialCustomers);
+  const [contracts, setContracts] = useState(initialContracts);
   const [keyword, setKeyword] = useState("");
   const [showVehicleForm, setShowVehicleForm] = useState(false);
   const [vehicleType, setVehicleType] = useState("OTO");
   const [savingVehicle, setSavingVehicle] = useState(false);
   const [vehicleError, setVehicleError] = useState("");
+  const [showCustomerForm, setShowCustomerForm] = useState(false);
+  const [savingCustomer, setSavingCustomer] = useState(false);
+  const [customerError, setCustomerError] = useState("");
+  const [showContractForm, setShowContractForm] = useState(false);
+  const [savingContract, setSavingContract] = useState(false);
+  const [contractError, setContractError] = useState("");
 
   useEffect(() => {
     fetch("http://localhost:8080/api/phuong-tien")
@@ -116,6 +122,232 @@ function App() {
         console.error("Lỗi tải phương tiện:", error);
       });
   }, []);
+  useEffect(() => {
+    fetch("http://localhost:8080/api/khach-hang")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Không thể tải danh sách khách hàng");
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setCustomers(
+          data.map((customer) => ({
+            ...customer,
+            sdt: customer.soDienThoai,
+          })),
+        );
+      })
+      .catch((error) => {
+        console.error("Lỗi tải danh sách khách hàng:", error);
+      });
+  }, []);
+
+  useEffect(() => {
+    fetch("http://localhost:8080/api/hop-dong")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Không thể tải danh sách hợp đồng.");
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setContracts(
+          data.map((contract) => ({
+            id: contract.id,
+            khachHang: contract.khachHang?.hoTen || "Chưa có khách hàng",
+            phuongTien: contract.phuongTien
+              ? `${contract.phuongTien.hangXe} - ${contract.phuongTien.bienSo}`
+              : "Chưa có phương tiện",
+            ngayThue: contract.ngayThue,
+            ngayTra: contract.ngayTra,
+            tongTien: contract.tongTien,
+
+            trangThai:
+              contract.trangThai === "CHO_XAC_NHAN"
+                ? "Chờ xác nhận"
+                : contract.trangThai === "DANG_THUE"
+                  ? "Đang thuê"
+                  : contract.trangThai === "DA_TRA"
+                    ? "Đã trả"
+                    : contract.trangThai === "DA_HUY"
+                      ? "Đã hủy"
+                      : contract.trangThai,
+          })),
+        );
+      })
+      .catch((error) => {
+        console.error("Lỗi tải danh sách hợp đồng:", error);
+      });
+  }, []);
+
+  const handleReturnVehicle = async (id) => {
+    const confirmed = window.confirm(
+      `Bạn có chắc muốn xác nhận trả xe cho hợp đồng HD-${String(id).padStart(4, "0")}?`,
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/hop-dong/${id}/trang-thai`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            trangThai: "DA_TRA",
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || "Không thể cập nhật trạng thái hợp đồng");
+      }
+
+      const updatedContract = await response.json();
+
+      setContracts((current) =>
+        current.map((contract) =>
+          contract.id === id
+            ? {
+                ...contract,
+                trangThai: "Đã trả",
+                tongTien: updatedContract.tongTien ?? contract.tongTien,
+              }
+            : contract,
+        ),
+      );
+
+      alert("Đã cập nhật hợp đồng thành Đã trả!");
+    } catch (error) {
+      alert(`Lỗi: ${error.message}`);
+    }
+  };
+
+  const handleCancelContract = async (id) => {
+    const confirmed = window.confirm(
+      `Bạn có chắc muốn hủy hợp đồng HD-${String(id).padStart(4, "0")}?`,
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/hop-dong/${id}/trang-thai`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            trangThai: "DA_HUY",
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || "Không thể hủy hợp đồng");
+      }
+
+      await response.json();
+
+      setContracts((current) =>
+        current.map((contract) =>
+          contract.id === id ? { ...contract, trangThai: "Đã hủy" } : contract,
+        ),
+      );
+
+      alert("Đã hủy hợp đồng thành công!");
+    } catch (error) {
+      alert(`Lỗi: ${error.message}`);
+    }
+  };
+
+  const handleApproveRequest = async (id) => {
+    const confirmed = window.confirm(
+      `Bạn có chắc muốn duyệt yêu cầu thuê xe HD-${String(id).padStart(4, "0")}?`,
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/hop-dong/${id}/trang-thai`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            trangThai: "DANG_THUE",
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || "Không thể duyệt yêu cầu thuê xe");
+      }
+
+      await response.json();
+
+      setContracts((current) =>
+        current.map((contract) =>
+          contract.id === id
+            ? { ...contract, trangThai: "Đang thuê" }
+            : contract,
+        ),
+      );
+
+      alert("Đã duyệt yêu cầu thuê xe!");
+    } catch (error) {
+      alert(`Lỗi: ${error.message}`);
+    }
+  };
+
+  const handleRejectRequest = async (id) => {
+    const confirmed = window.confirm(
+      `Bạn có chắc muốn từ chối yêu cầu thuê xe HD-${String(id).padStart(4, "0")}?`,
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/hop-dong/${id}/trang-thai`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            trangThai: "DA_HUY",
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || "Không thể từ chối yêu cầu");
+      }
+
+      await response.json();
+
+      setContracts((current) =>
+        current.map((contract) =>
+          contract.id === id ? { ...contract, trangThai: "Đã hủy" } : contract,
+        ),
+      );
+
+      alert("Đã từ chối yêu cầu thuê xe!");
+    } catch (error) {
+      alert(`Lỗi: ${error.message}`);
+    }
+  };
 
   const activeContracts = contracts.filter(
     (c) => c.trangThai === "Đang thuê",
@@ -259,7 +491,15 @@ function App() {
                     Xem tất cả →
                   </button>
                 </div>
-                <ContractTable contracts={contracts.slice(0, 4)} />
+                <ContractTable
+                  contracts={[...contracts]
+                    .sort((a, b) => new Date(b.ngayThue) - new Date(a.ngayThue))
+                    .slice(0, 4)}
+                  onReturnVehicle={handleReturnVehicle}
+                  onCancelContract={handleCancelContract}
+                  onApproveRequest={handleApproveRequest}
+                  onRejectRequest={handleRejectRequest}
+                />
               </section>
 
               <section className="panel">
@@ -490,17 +730,120 @@ function App() {
                   <h3>Danh sách khách hàng</h3>
                   <p>Thông tin khách hàng đã đăng ký</p>
                 </div>
+
                 <button
                   className="primary-button"
-                  onClick={() =>
-                    alert(
-                      "Chức năng thêm khách hàng sẽ được kết nối API ở bước tiếp theo.",
-                    )
-                  }
+                  onClick={() => {
+                    setCustomerError("");
+                    setShowCustomerForm(true);
+                  }}
                 >
                   ＋ Thêm khách hàng
                 </button>
               </div>
+
+              {showCustomerForm && (
+                <div className="vehicle-form">
+                  <h3>Thêm khách hàng mới</h3>
+
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      setCustomerError("");
+                      setSavingCustomer(true);
+
+                      const form = e.currentTarget;
+                      const formData = new FormData(form);
+
+                      const customer = {
+                        hoTen: formData.get("hoTen").trim(),
+                        soDienThoai: formData.get("soDienThoai").trim(),
+                        diaChi: formData.get("diaChi").trim(),
+                      };
+
+                      try {
+                        const response = await fetch(
+                          "http://localhost:8080/api/khach-hang",
+                          {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(customer),
+                          },
+                        );
+
+                        const result = await response.json();
+
+                        if (!response.ok) {
+                          throw new Error(
+                            typeof result === "string"
+                              ? result
+                              : "Không thể thêm khách hàng.",
+                          );
+                        }
+
+                        setCustomers((current) => [
+                          ...current,
+                          {
+                            ...result,
+                            sdt: result.soDienThoai,
+                          },
+                        ]);
+
+                        setShowCustomerForm(false);
+                        form.reset();
+                        alert("Thêm khách hàng thành công!");
+                      } catch (error) {
+                        setCustomerError(
+                          error.message || "Có lỗi khi thêm khách hàng.",
+                        );
+                      } finally {
+                        setSavingCustomer(false);
+                      }
+                    }}
+                  >
+                    <label>Họ và tên</label>
+                    <input
+                      name="hoTen"
+                      required
+                      placeholder="Ví dụ: Nguyen Van B"
+                    />
+
+                    <label>Số điện thoại</label>
+                    <input
+                      name="soDienThoai"
+                      type="tel"
+                      required
+                      placeholder="Ví dụ: 0912345678"
+                    />
+
+                    <label>Địa chỉ</label>
+                    <input
+                      name="diaChi"
+                      required
+                      placeholder="Ví dụ: Hai Phong"
+                    />
+
+                    {customerError && (
+                      <p style={{ color: "red" }}>{customerError}</p>
+                    )}
+
+                    <button type="submit" disabled={savingCustomer}>
+                      {savingCustomer ? "Đang lưu..." : "Lưu khách hàng"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCustomerForm(false);
+                        setCustomerError("");
+                      }}
+                    >
+                      Hủy
+                    </button>
+                  </form>
+                </div>
+              )}
+
               <SearchBox
                 value={keyword}
                 onChange={setKeyword}
@@ -548,21 +891,174 @@ function App() {
                 </div>
                 <button
                   className="primary-button"
-                  onClick={() =>
-                    alert(
-                      "Chức năng tạo hợp đồng sẽ được kết nối API ở bước tiếp theo.",
-                    )
-                  }
+                  onClick={() => {
+                    setContractError("");
+                    setShowContractForm(true);
+                  }}
                 >
                   ＋ Tạo hợp đồng
                 </button>
               </div>
+
+              {showContractForm && (
+                <div className="vehicle-form">
+                  <h3>Tạo hợp đồng thuê</h3>
+
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      setContractError("");
+                      setSavingContract(true);
+
+                      const form = e.currentTarget;
+                      const formData = new FormData(form);
+
+                      const requestData = {
+                        khachHangId: Number(formData.get("khachHangId")),
+                        phuongTienId: Number(formData.get("phuongTienId")),
+                        ngayThue: formData.get("ngayThue"),
+                        ngayTra: formData.get("ngayTra"),
+                      };
+
+                      try {
+                        const response = await fetch(
+                          "http://localhost:8080/api/hop-dong",
+                          {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(requestData),
+                          },
+                        );
+
+                        const responseText = await response.text();
+
+                        let result;
+
+                        try {
+                          result = responseText
+                            ? JSON.parse(responseText)
+                            : null;
+                        } catch {
+                          result = responseText;
+                        }
+
+                        if (!response.ok) {
+                          throw new Error(
+                            typeof result === "string"
+                              ? result
+                              : result?.message || "Không thể tạo hợp đồng.",
+                          );
+                        }
+
+                        const customer = customers.find(
+                          (c) => c.id === result.khachHang?.id,
+                        );
+                        const vehicle = vehicles.find(
+                          (v) => v.id === result.phuongTien?.id,
+                        );
+
+                        setContracts((current) => [
+                          ...current,
+                          {
+                            id: result.id,
+                            khachHang:
+                              result.khachHang?.hoTen ||
+                              customer?.hoTen ||
+                              "Khách hàng",
+                            phuongTien: result.phuongTien
+                              ? `${result.phuongTien.hangXe} - ${result.phuongTien.bienSo}`
+                              : vehicle
+                                ? `${vehicle.hangXe} - ${vehicle.bienSo}`
+                                : "Phương tiện",
+                            ngayThue: result.ngayThue,
+                            ngayTra: result.ngayTra,
+                            tongTien: result.tongTien,
+                            trangThai:
+                              result.trangThai === "DANG_THUE"
+                                ? "Đang thuê"
+                                : result.trangThai === "DA_TRA"
+                                  ? "Đã trả"
+                                  : result.trangThai === "DA_HUY"
+                                    ? "Đã hủy"
+                                    : result.trangThai,
+                          },
+                        ]);
+
+                        setShowContractForm(false);
+                        form.reset();
+                        alert("Tạo hợp đồng thành công!");
+                      } catch (error) {
+                        setContractError(
+                          error.message || "Có lỗi khi tạo hợp đồng.",
+                        );
+                      } finally {
+                        setSavingContract(false);
+                      }
+                    }}
+                  >
+                    <label>Khách hàng</label>
+                    <select name="khachHangId" required defaultValue="">
+                      <option value="" disabled>
+                        -- Chọn khách hàng --
+                      </option>
+                      {customers.map((customer) => (
+                        <option key={customer.id} value={customer.id}>
+                          {customer.hoTen} - {customer.sdt}
+                        </option>
+                      ))}
+                    </select>
+
+                    <label>Phương tiện</label>
+                    <select name="phuongTienId" required defaultValue="">
+                      <option value="" disabled>
+                        -- Chọn phương tiện --
+                      </option>
+                      {vehicles.map((vehicle) => (
+                        <option key={vehicle.id} value={vehicle.id}>
+                          {vehicle.hangXe} - {vehicle.bienSo}
+                        </option>
+                      ))}
+                    </select>
+
+                    <label>Ngày thuê</label>
+                    <input name="ngayThue" type="date" required />
+
+                    <label>Ngày trả</label>
+                    <input name="ngayTra" type="date" required />
+
+                    {contractError && (
+                      <p style={{ color: "red" }}>{contractError}</p>
+                    )}
+
+                    <button type="submit" disabled={savingContract}>
+                      {savingContract ? "Đang lưu..." : "Lưu hợp đồng"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowContractForm(false);
+                        setContractError("");
+                      }}
+                    >
+                      Hủy
+                    </button>
+                  </form>
+                </div>
+              )}
+
               <SearchBox
                 value={keyword}
                 onChange={setKeyword}
                 placeholder="Tìm khách hàng hoặc phương tiện..."
               />
-              <ContractTable contracts={filteredContracts} />
+              <ContractTable
+                contracts={filteredContracts}
+                onReturnVehicle={handleReturnVehicle}
+                onCancelContract={handleCancelContract}
+                onApproveRequest={handleApproveRequest}
+                onRejectRequest={handleRejectRequest}
+              />
             </section>
           )}
 
@@ -645,7 +1141,13 @@ function VehicleTable({ vehicles }) {
   );
 }
 
-function ContractTable({ contracts }) {
+function ContractTable({
+  contracts,
+  onReturnVehicle,
+  onCancelContract,
+  onApproveRequest,
+  onRejectRequest,
+}) {
   return (
     <div className="table-wrap">
       <table>
@@ -657,8 +1159,10 @@ function ContractTable({ contracts }) {
             <th>THỜI GIAN THUÊ</th>
             <th>TỔNG TIỀN</th>
             <th>TRẠNG THÁI</th>
+            <th>THAO TÁC</th>
           </tr>
         </thead>
+
         <tbody>
           {contracts.map((c) => (
             <tr key={c.id}>
@@ -667,21 +1171,66 @@ function ContractTable({ contracts }) {
                   HD-{String(c.id).padStart(4, "0")}
                 </span>
               </td>
+
               <td>{c.khachHang}</td>
               <td>{c.phuongTien}</td>
+
               <td>
                 <div className="date-range">
                   {c.ngayThue}
                   <span>đến {c.ngayTra}</span>
                 </div>
               </td>
+
               <td className="money-cell">{money(c.tongTien)}</td>
+
               <td>
                 <StatusBadge status={c.trangThai} />
               </td>
+
+              <td>
+                {c.trangThai === "Chờ xác nhận" && (
+                  <>
+                    <button
+                      className="secondary-button"
+                      onClick={() => onApproveRequest(c.id)}
+                    >
+                      Duyệt yêu cầu
+                    </button>
+
+                    <button
+                      className="secondary-button"
+                      onClick={() => onRejectRequest(c.id)}
+                      style={{ marginLeft: "8px" }}
+                    >
+                      Từ chối
+                    </button>
+                  </>
+                )}
+
+                {c.trangThai === "Đang thuê" && (
+                  <>
+                    <button
+                      className="secondary-button"
+                      onClick={() => onReturnVehicle(c.id)}
+                    >
+                      Trả xe
+                    </button>
+
+                    <button
+                      className="secondary-button"
+                      onClick={() => onCancelContract(c.id)}
+                      style={{ marginLeft: "8px" }}
+                    >
+                      Hủy hợp đồng
+                    </button>
+                  </>
+                )}
+              </td>
             </tr>
           ))}
-          {contracts.length === 0 && <EmptyRow columns={6} />}
+
+          {contracts.length === 0 && <EmptyRow columns={7} />}
         </tbody>
       </table>
     </div>
