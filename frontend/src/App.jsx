@@ -1,75 +1,88 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import "./App.css";
+
+// Components
+import Navbar from "./components/Navbar";
+import CustomerHome from "./components/CustomerHome";
+import VehicleDetailModal from "./components/VehicleDetailModal";
+import BookingModal from "./components/BookingModal";
+import CustomerBookingsModal from "./components/CustomerBookingsModal";
+import AuthModal from "./components/AuthModal";
+import AdminGuard from "./components/AdminGuard";
+
+import { money } from "./utils/constants";
 
 const initialVehicles = [
   {
     id: 1,
     bienSo: "15A-12345",
-    hangXe: "Toyota Vios",
+    hangXe: "Toyota Vios 1.5G",
     loaiXe: "Ô tô",
     gia: 800000,
     trangThai: "Đang thuê",
+    soCho: 5,
+    loaiNhienLieu: "Xăng",
   },
   {
     id: 2,
     bienSo: "15B-67890",
-    hangXe: "Honda City",
+    hangXe: "Honda City RS",
     loaiXe: "Ô tô",
     gia: 900000,
     trangThai: "Sẵn sàng",
+    soCho: 5,
+    loaiNhienLieu: "Xăng",
   },
   {
     id: 3,
+    bienSo: "15A-99999",
+    hangXe: "Mazda CX-5 Premium",
+    loaiXe: "Ô tô",
+    gia: 1200000,
+    trangThai: "Sẵn sàng",
+    soCho: 5,
+    loaiNhienLieu: "Xăng",
+  },
+  {
+    id: 6,
     bienSo: "29A-11223",
-    hangXe: "Honda Air Blade",
+    hangXe: "Honda Air Blade 125",
     loaiXe: "Xe máy",
     gia: 150000,
     trangThai: "Sẵn sàng",
+    dungTichXiLanh: 125,
+    kieuXe: "Tay ga",
   },
   {
-    id: 4,
+    id: 7,
     bienSo: "30F-45678",
-    hangXe: "Yamaha Exciter",
+    hangXe: "Yamaha Exciter 155 VVA",
     loaiXe: "Xe máy",
     gia: 180000,
     trangThai: "Đang thuê",
+    dungTichXiLanh: 155,
+    kieuXe: "Côn tay",
   },
 ];
 
 const initialCustomers = [
-  { id: 1, hoTen: "Nguyễn Văn An", sdt: "0987654321", diaChi: "Hải Phòng" },
-  { id: 2, hoTen: "Trần Minh Đức", sdt: "0912345678", diaChi: "Hà Nội" },
+  { id: 1, hoTen: "Nguyễn Văn An", sdt: "0987654321", diaChi: "Lê Hồng Phong, Hải Phòng" },
+  { id: 2, hoTen: "Trần Minh Đức", sdt: "0912345678", diaChi: "Cầu Giấy, Hà Nội" },
 ];
 
 const initialContracts = [
   {
     id: 1,
     khachHang: "Nguyễn Văn An",
-    phuongTien: "Toyota Vios",
-    ngayThue: "25/10/2026",
-    ngayTra: "28/10/2026",
+    phuongTien: "Toyota Vios 1.5G - 15A-12345",
+    ngayThue: "2026-10-25",
+    ngayTra: "2026-10-28",
     tongTien: 2640000,
     trangThai: "Đang thuê",
   },
-  {
-    id: 2,
-    khachHang: "Trần Minh Đức",
-    phuongTien: "Honda City",
-    ngayThue: "20/10/2026",
-    ngayTra: "22/10/2026",
-    tongTien: 1980000,
-    trangThai: "Đã trả",
-  },
 ];
 
-const money = (value) =>
-  new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-    maximumFractionDigits: 0,
-  }).format(value);
-
-const menu = [
+const adminMenu = [
   { id: "dashboard", icon: "▦", label: "Tổng quan" },
   { id: "vehicles", icon: "🚘", label: "Phương tiện" },
   { id: "customers", icon: "♙", label: "Khách hàng" },
@@ -77,11 +90,34 @@ const menu = [
 ];
 
 function App() {
-  const [page, setPage] = useState("dashboard");
+  // 1. Phân quyền và người dùng hiện tại
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem("vr_user");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  // Chế độ xem: 'client' (giao diện khách hàng) hoặc 'admin' (bảng điều khiển quản trị)
+  const [viewMode, setViewMode] = useState("client");
+
+  // Quản lý Modals
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authInitialTab, setAuthInitialTab] = useState("login");
+  const [selectedVehicleDetail, setSelectedVehicleDetail] = useState(null);
+  const [selectedVehicleBooking, setSelectedVehicleBooking] = useState(null);
+  const [myBookingsOpen, setMyBookingsOpen] = useState(false);
+
+  // Dữ liệu ứng dụng
+  const [adminPage, setAdminPage] = useState("dashboard");
   const [vehicles, setVehicles] = useState(initialVehicles);
   const [customers, setCustomers] = useState(initialCustomers);
   const [contracts, setContracts] = useState(initialContracts);
   const [keyword, setKeyword] = useState("");
+
+  // Form states cho Admin
   const [showVehicleForm, setShowVehicleForm] = useState(false);
   const [vehicleType, setVehicleType] = useState("OTO");
   const [savingVehicle, setSavingVehicle] = useState(false);
@@ -93,134 +129,158 @@ function App() {
   const [savingContract, setSavingContract] = useState(false);
   const [contractError, setContractError] = useState("");
 
-  useEffect(() => {
+  // Hàm tải danh sách phương tiện từ backend
+  const loadVehicles = () => {
     fetch("http://localhost:8080/api/phuong-tien")
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Không thể tải danh sách phương tiện");
-        }
-        return response.json();
+      .then((res) => {
+        if (!res.ok) throw new Error("Không thể tải danh sách phương tiện");
+        return res.json();
       })
       .then((data) => {
-        const apiVehicles = data.map((vehicle) => ({
-          id: vehicle.id,
-          bienSo: vehicle.bienSo,
-          hangXe: vehicle.hangXe,
+        const apiVehicles = data.map((v) => ({
+          id: v.id,
+          bienSo: v.bienSo,
+          hangXe: v.hangXe,
           loaiXe:
-            vehicle.loaiXe === "OTO"
+            v.loaiXe === "OTO"
               ? "Ô tô"
-              : vehicle.loaiXe === "XEMAY"
+              : v.loaiXe === "XEMAY"
                 ? "Xe máy"
-                : vehicle.loaiXe,
-          gia: vehicle.giaThueNgay,
-          trangThai: vehicle.trangThai || "Sẵn sàng",
+                : v.loaiXe,
+          gia: v.giaThueNgay,
+          trangThai: v.trangThai || "Sẵn sàng",
+          soCho: v.soCho,
+          loaiNhienLieu: v.loaiNhienLieu,
+          dungTichXiLanh: v.dungTichXiLanh,
+          kieuXe: v.kieuXe,
         }));
-
         setVehicles(apiVehicles);
       })
-      .catch((error) => {
-        console.error("Lỗi tải phương tiện:", error);
-      });
-  }, []);
-  useEffect(() => {
+      .catch((err) => console.error("Lỗi tải phương tiện:", err));
+  };
+
+  // Hàm tải danh sách khách hàng từ backend
+  const loadCustomers = () => {
     fetch("http://localhost:8080/api/khach-hang")
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Không thể tải danh sách khách hàng");
-        }
-        return response.json();
+      .then((res) => {
+        if (!res.ok) throw new Error("Không thể tải danh sách khách hàng");
+        return res.json();
       })
       .then((data) => {
         setCustomers(
-          data.map((customer) => ({
-            ...customer,
-            sdt: customer.soDienThoai,
+          data.map((c) => ({
+            ...c,
+            sdt: c.soDienThoai,
           })),
         );
       })
-      .catch((error) => {
-        console.error("Lỗi tải danh sách khách hàng:", error);
-      });
-  }, []);
+      .catch((err) => console.error("Lỗi tải khách hàng:", err));
+  };
 
-  useEffect(() => {
+  // Hàm tải danh sách hợp đồng từ backend
+  const loadContracts = () => {
     fetch("http://localhost:8080/api/hop-dong")
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Không thể tải danh sách hợp đồng.");
-        }
-        return response.json();
+      .then((res) => {
+        if (!res.ok) throw new Error("Không thể tải danh sách hợp đồng");
+        return res.json();
       })
       .then((data) => {
         setContracts(
-          data.map((contract) => ({
-            id: contract.id,
-            khachHang: contract.khachHang?.hoTen || "Chưa có khách hàng",
-            phuongTien: contract.phuongTien
-              ? `${contract.phuongTien.hangXe} - ${contract.phuongTien.bienSo}`
+          data.map((c) => ({
+            id: c.id,
+            khachHang: c.khachHang?.hoTen || "Chưa có khách hàng",
+            phuongTien: c.phuongTien
+              ? `${c.phuongTien.hangXe} - ${c.phuongTien.bienSo}`
               : "Chưa có phương tiện",
-            ngayThue: contract.ngayThue,
-            ngayTra: contract.ngayTra,
-            tongTien: contract.tongTien,
-
+            phuongTienId: c.phuongTien?.id,
+            khachHangId: c.khachHang?.id,
+            ngayThue: c.ngayThue,
+            ngayTra: c.ngayTra,
+            tongTien: c.tongTien,
             trangThai:
-              contract.trangThai === "CHO_XAC_NHAN"
+              c.trangThai === "CHO_XAC_NHAN"
                 ? "Chờ xác nhận"
-                : contract.trangThai === "DANG_THUE"
+                : c.trangThai === "DANG_THUE"
                   ? "Đang thuê"
-                  : contract.trangThai === "DA_TRA"
+                  : c.trangThai === "DA_TRA"
                     ? "Đã trả"
-                    : contract.trangThai === "DA_HUY"
+                    : c.trangThai === "DA_HUY"
                       ? "Đã hủy"
-                      : contract.trangThai,
+                      : c.trangThai,
           })),
         );
       })
-      .catch((error) => {
-        console.error("Lỗi tải danh sách hợp đồng:", error);
-      });
+      .catch((err) => console.error("Lỗi tải hợp đồng:", err));
+  };
+
+  useEffect(() => {
+    loadVehicles();
+    loadCustomers();
+    loadContracts();
   }, []);
 
-  const handleReturnVehicle = async (id) => {
-    const confirmed = window.confirm(
-      `Bạn có chắc muốn xác nhận trả xe cho hợp đồng HD-${String(id).padStart(4, "0")}?`,
+  // Cập nhật trạng thái xe dựa theo các hợp đồng đang thuê
+  const vehiclesWithUpdatedStatus = useMemo(() => {
+    const rentedVehicleIds = new Set(
+      contracts
+        .filter((c) => c.trangThai === "Đang thuê" || c.trangThai === "DANG_THUE")
+        .map((c) => c.phuongTienId),
     );
 
+    return vehicles.map((v) => ({
+      ...v,
+      trangThai: rentedVehicleIds.has(v.id) ? "Đang thuê" : "Sẵn sàng",
+    }));
+  }, [vehicles, contracts]);
+
+  // Đăng xuất
+  const handleLogout = () => {
+    localStorage.removeItem("vr_user");
+    setCurrentUser(null);
+    setViewMode("client");
+  };
+
+  // Mở modal xác thực
+  const handleOpenAuth = (tab = "login") => {
+    setAuthInitialTab(tab);
+    setAuthModalOpen(true);
+  };
+
+  // Cuộn tới section
+  const handleScrollTo = (sectionId) => {
+    if (viewMode !== "client") {
+      setViewMode("client");
+      setTimeout(() => {
+        document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    } else {
+      document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  // Khi đặt xe thành công
+  const handleBookingSuccess = () => {
+    loadContracts();
+    loadVehicles();
+    loadCustomers();
+  };
+
+  // Các thao tác quản trị hợp đồng
+  const handleReturnVehicle = async (id) => {
+    const confirmed = window.confirm(`Bạn có chắc muốn xác nhận trả xe cho hợp đồng HD-${String(id).padStart(4, "0")}?`);
     if (!confirmed) return;
 
     try {
-      const response = await fetch(
-        `http://localhost:8080/api/hop-dong/${id}/trang-thai`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            trangThai: "DA_TRA",
-          }),
-        },
-      );
-
+      const response = await fetch(`http://localhost:8080/api/hop-dong/${id}/trang-thai`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trangThai: "DA_TRA" }),
+      });
       if (!response.ok) {
         const message = await response.text();
         throw new Error(message || "Không thể cập nhật trạng thái hợp đồng");
       }
-
-      const updatedContract = await response.json();
-
-      setContracts((current) =>
-        current.map((contract) =>
-          contract.id === id
-            ? {
-                ...contract,
-                trangThai: "Đã trả",
-                tongTien: updatedContract.tongTien ?? contract.tongTien,
-              }
-            : contract,
-        ),
-      );
-
+      loadContracts();
       alert("Đã cập nhật hợp đồng thành Đã trả!");
     } catch (error) {
       alert(`Lỗi: ${error.message}`);
@@ -228,39 +288,20 @@ function App() {
   };
 
   const handleCancelContract = async (id) => {
-    const confirmed = window.confirm(
-      `Bạn có chắc muốn hủy hợp đồng HD-${String(id).padStart(4, "0")}?`,
-    );
-
+    const confirmed = window.confirm(`Bạn có chắc muốn hủy hợp đồng HD-${String(id).padStart(4, "0")}?`);
     if (!confirmed) return;
 
     try {
-      const response = await fetch(
-        `http://localhost:8080/api/hop-dong/${id}/trang-thai`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            trangThai: "DA_HUY",
-          }),
-        },
-      );
-
+      const response = await fetch(`http://localhost:8080/api/hop-dong/${id}/trang-thai`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trangThai: "DA_HUY" }),
+      });
       if (!response.ok) {
         const message = await response.text();
         throw new Error(message || "Không thể hủy hợp đồng");
       }
-
-      await response.json();
-
-      setContracts((current) =>
-        current.map((contract) =>
-          contract.id === id ? { ...contract, trangThai: "Đã hủy" } : contract,
-        ),
-      );
-
+      loadContracts();
       alert("Đã hủy hợp đồng thành công!");
     } catch (error) {
       alert(`Lỗi: ${error.message}`);
@@ -268,41 +309,21 @@ function App() {
   };
 
   const handleApproveRequest = async (id) => {
-    const confirmed = window.confirm(
-      `Bạn có chắc muốn duyệt yêu cầu thuê xe HD-${String(id).padStart(4, "0")}?`,
-    );
-
+    const confirmed = window.confirm(`Bạn có chắc muốn duyệt yêu cầu thuê xe HD-${String(id).padStart(4, "0")}?`);
     if (!confirmed) return;
 
     try {
-      const response = await fetch(
-        `http://localhost:8080/api/hop-dong/${id}/trang-thai`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            trangThai: "DANG_THUE",
-          }),
-        },
-      );
-
+      const response = await fetch(`http://localhost:8080/api/hop-dong/${id}/trang-thai`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trangThai: "DANG_THUE" }),
+      });
       if (!response.ok) {
         const message = await response.text();
         throw new Error(message || "Không thể duyệt yêu cầu thuê xe");
       }
-
-      await response.json();
-
-      setContracts((current) =>
-        current.map((contract) =>
-          contract.id === id
-            ? { ...contract, trangThai: "Đang thuê" }
-            : contract,
-        ),
-      );
-
+      loadContracts();
+      loadVehicles();
       alert("Đã duyệt yêu cầu thuê xe!");
     } catch (error) {
       alert(`Lỗi: ${error.message}`);
@@ -310,70 +331,165 @@ function App() {
   };
 
   const handleRejectRequest = async (id) => {
-    const confirmed = window.confirm(
-      `Bạn có chắc muốn từ chối yêu cầu thuê xe HD-${String(id).padStart(4, "0")}?`,
-    );
-
+    const confirmed = window.confirm(`Bạn có chắc muốn từ chối yêu cầu thuê xe HD-${String(id).padStart(4, "0")}?`);
     if (!confirmed) return;
 
     try {
-      const response = await fetch(
-        `http://localhost:8080/api/hop-dong/${id}/trang-thai`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            trangThai: "DA_HUY",
-          }),
-        },
-      );
-
+      const response = await fetch(`http://localhost:8080/api/hop-dong/${id}/trang-thai`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trangThai: "DA_HUY" }),
+      });
       if (!response.ok) {
         const message = await response.text();
         throw new Error(message || "Không thể từ chối yêu cầu");
       }
-
-      await response.json();
-
-      setContracts((current) =>
-        current.map((contract) =>
-          contract.id === id ? { ...contract, trangThai: "Đã hủy" } : contract,
-        ),
-      );
-
+      loadContracts();
       alert("Đã từ chối yêu cầu thuê xe!");
     } catch (error) {
       alert(`Lỗi: ${error.message}`);
     }
   };
 
-  const activeContracts = contracts.filter(
-    (c) => c.trangThai === "Đang thuê",
-  ).length;
+  // Thống kê cho Admin
+  const activeContracts = contracts.filter((c) => c.trangThai === "Đang thuê").length;
   const totalRevenue = contracts
     .filter((c) => c.trangThai === "Đã trả")
     .reduce((sum, c) => sum + c.tongTien, 0);
 
-  const filteredVehicles = vehicles.filter((v) =>
+  const filteredVehicles = vehiclesWithUpdatedStatus.filter((v) =>
     `${v.bienSo} ${v.hangXe}`.toLowerCase().includes(keyword.toLowerCase()),
   );
-
   const filteredCustomers = customers.filter((c) =>
     `${c.hoTen} ${c.sdt}`.toLowerCase().includes(keyword.toLowerCase()),
   );
-
   const filteredContracts = contracts.filter((c) =>
-    `${c.khachHang} ${c.phuongTien}`
-      .toLowerCase()
-      .includes(keyword.toLowerCase()),
+    `${c.khachHang} ${c.phuongTien}`.toLowerCase().includes(keyword.toLowerCase()),
   );
 
-  const pageTitle = menu.find((item) => item.id === page)?.label ?? "Tổng quan";
+  const pageTitle = adminMenu.find((item) => item.id === adminPage)?.label ?? "Tổng quan";
 
+  // ==========================================
+  // RENDER GIAO DIỆN KHÁCH HÀNG
+  // ==========================================
+  if (viewMode === "client") {
+    return (
+      <div className="app-root">
+        {/* Header điều hướng */}
+        <Navbar
+          currentUser={currentUser}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          onOpenAuth={handleOpenAuth}
+          onLogout={handleLogout}
+          onOpenMyBookings={() => {
+            if (!currentUser) {
+              handleOpenAuth("login");
+            } else {
+              setMyBookingsOpen(true);
+            }
+          }}
+          onScrollTo={handleScrollTo}
+        />
+
+        {/* Nội dung Trang chủ Khách hàng */}
+        <CustomerHome
+          vehicles={vehiclesWithUpdatedStatus}
+          currentUser={currentUser}
+          onSelectVehicleForDetail={(vehicle) => setSelectedVehicleDetail(vehicle)}
+          onSelectVehicleForBooking={(vehicle) => {
+            setSelectedVehicleBooking(vehicle);
+          }}
+          onOpenAuth={handleOpenAuth}
+        />
+
+        {/* Modal Xem chi tiết xe */}
+        {selectedVehicleDetail && (
+          <VehicleDetailModal
+            vehicle={selectedVehicleDetail}
+            onClose={() => setSelectedVehicleDetail(null)}
+            onBook={(vehicle) => {
+              setSelectedVehicleDetail(null);
+              setSelectedVehicleBooking(vehicle);
+            }}
+          />
+        )}
+
+        {/* Modal Đặt xe trực tuyến */}
+        {selectedVehicleBooking && (
+          <BookingModal
+            vehicle={selectedVehicleBooking}
+            currentUser={currentUser}
+            onClose={() => setSelectedVehicleBooking(null)}
+            onOpenAuth={handleOpenAuth}
+            onBookingSuccess={handleBookingSuccess}
+          />
+        )}
+
+        {/* Modal Đơn thuê của tôi */}
+        {myBookingsOpen && (
+          <CustomerBookingsModal
+            currentUser={currentUser}
+            allContracts={contracts}
+            onClose={() => setMyBookingsOpen(false)}
+          />
+        )}
+
+        {/* Modal Đăng nhập / Đăng ký */}
+        {authModalOpen && (
+          <AuthModal
+            initialTab={authInitialTab}
+            onClose={() => setAuthModalOpen(false)}
+            onSuccess={(user) => {
+              setCurrentUser(user);
+              loadContracts();
+            }}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // ==========================================
+  // BẢO VỆ CHỨC NĂNG QUẢN TRỊ (ADMIN GUARD)
+  // ==========================================
+  if (currentUser?.vaiTro !== "ADMIN") {
+    return (
+      <div className="app-root">
+        <Navbar
+          currentUser={currentUser}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          onOpenAuth={handleOpenAuth}
+          onLogout={handleLogout}
+          onOpenMyBookings={() => setMyBookingsOpen(true)}
+          onScrollTo={handleScrollTo}
+        />
+        <AdminGuard
+          currentUser={currentUser}
+          onBackToClient={() => setViewMode("client")}
+          onOpenAuth={handleOpenAuth}
+        />
+        {authModalOpen && (
+          <AuthModal
+            initialTab={authInitialTab}
+            onClose={() => setAuthModalOpen(false)}
+            onSuccess={(user) => {
+              setCurrentUser(user);
+              loadContracts();
+            }}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // ==========================================
+  // RENDER BẢNG ĐIỀU KHIỂN QUẢN TRỊ (ADMIN VIEW)
+  // ==========================================
   return (
     <div className="app-shell">
+      {/* Sidebar Admin */}
       <aside className="sidebar">
         <div className="brand">
           <div className="brand-logo">V</div>
@@ -383,20 +499,29 @@ function App() {
           </div>
         </div>
 
+        {/* Nút quay về Giao diện Khách hàng */}
+        <button
+          type="button"
+          className="btn-return-client-pill"
+          onClick={() => setViewMode("client")}
+        >
+          🌐 Về Giao diện Khách hàng
+        </button>
+
         <div className="menu-label">MENU CHÍNH</div>
         <nav>
-          {menu.map((item) => (
+          {adminMenu.map((item) => (
             <button
               key={item.id}
-              className={`nav-item ${page === item.id ? "active" : ""}`}
+              className={`nav-item ${adminPage === item.id ? "active" : ""}`}
               onClick={() => {
-                setPage(item.id);
+                setAdminPage(item.id);
                 setKeyword("");
               }}
             >
               <span className="nav-icon">{item.icon}</span>
               {item.label}
-              {page === item.id && <span className="nav-indicator" />}
+              {adminPage === item.id && <span className="nav-indicator" />}
             </button>
           ))}
         </nav>
@@ -410,14 +535,23 @@ function App() {
           <div className="profile">
             <div className="avatar">AD</div>
             <div className="profile-info">
-              <strong>Quản trị viên</strong>
+              <strong>{currentUser.hoTen || "Quản trị viên"}</strong>
               <span>Administrator</span>
             </div>
-            <span className="profile-dots">•••</span>
+            <button
+              type="button"
+              className="btn-logout"
+              title="Đăng xuất"
+              onClick={handleLogout}
+              style={{ padding: "4px 8px", fontSize: "11px" }}
+            >
+              Thoát
+            </button>
           </div>
         </div>
       </aside>
 
+      {/* Main Area Admin */}
       <main className="main-area">
         <header className="topbar">
           <div>
@@ -427,7 +561,15 @@ function App() {
             <h1>{pageTitle}</h1>
           </div>
           <div className="topbar-right">
-            <div className="today">◷ &nbsp; 24 tháng 10, 2026</div>
+            <button
+              type="button"
+              className="btn-admin-switch"
+              style={{ marginRight: "12px" }}
+              onClick={() => setViewMode("client")}
+            >
+              🌐 Xem Trang Khách
+            </button>
+            <div className="today">◷ &nbsp; 29 tháng 10, 2026</div>
             <button className="notification" title="Thông báo">
               ♧<i />
             </button>
@@ -436,12 +578,12 @@ function App() {
         </header>
 
         <div className="content">
-          {page === "dashboard" && (
+          {adminPage === "dashboard" && (
             <>
               <section className="welcome">
                 <div>
                   <span className="eyebrow">BẢNG ĐIỀU KHIỂN</span>
-                  <h2>Xin chào, Quản trị viên 👋</h2>
+                  <h2>Xin chào, {currentUser.hoTen || "Quản trị viên"} 👋</h2>
                   <p>Đây là tình hình hoạt động của hệ thống hôm nay.</p>
                 </div>
                 <div className="welcome-art">🚘</div>
@@ -450,7 +592,7 @@ function App() {
               <section className="stats-grid">
                 <StatCard
                   title="Tổng phương tiện"
-                  value={vehicles.length}
+                  value={vehiclesWithUpdatedStatus.length}
                   icon="🚘"
                   note="Phương tiện trong hệ thống"
                   color="blue"
@@ -486,7 +628,7 @@ function App() {
                   </div>
                   <button
                     className="text-button"
-                    onClick={() => setPage("contracts")}
+                    onClick={() => setAdminPage("contracts")}
                   >
                     Xem tất cả →
                   </button>
@@ -510,17 +652,17 @@ function App() {
                   </div>
                   <button
                     className="text-button"
-                    onClick={() => setPage("vehicles")}
+                    onClick={() => setAdminPage("vehicles")}
                   >
                     Quản lý xe →
                   </button>
                 </div>
-                <VehicleTable vehicles={vehicles.slice(0, 4)} />
+                <VehicleTable vehicles={vehiclesWithUpdatedStatus.slice(0, 4)} />
               </section>
             </>
           )}
 
-          {page === "vehicles" && (
+          {adminPage === "vehicles" && (
             <section className="panel">
               <div className="panel-heading">
                 <div>
@@ -537,10 +679,10 @@ function App() {
                   ＋ Thêm phương tiện
                 </button>
               </div>
+
               {showVehicleForm && (
                 <div className="vehicle-form">
                   <h3>Thêm phương tiện mới</h3>
-
                   <form
                     onSubmit={async (e) => {
                       e.preventDefault();
@@ -562,175 +704,126 @@ function App() {
                               loaiNhienLieu: formData.get("loaiNhienLieu"),
                             }
                           : {
-                              dungTichXiLanh: Number(
-                                formData.get("dungTichXiLanh"),
-                              ),
+                              dungTichXiLanh: Number(formData.get("dungTichXiLanh")),
                               kieuXe: formData.get("kieuXe"),
                             }),
                       };
 
                       try {
-                        const response = await fetch(
-                          "http://localhost:8080/api/phuong-tien",
-                          {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify(vehicle),
-                          },
-                        );
+                        const response = await fetch("http://localhost:8080/api/phuong-tien", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify(vehicle),
+                        });
 
                         const result = await response.json();
-
                         if (!response.ok) {
-                          throw new Error(
-                            typeof result === "string"
-                              ? result
-                              : "Không thể thêm phương tiện.",
-                          );
+                          throw new Error(typeof result === "string" ? result : "Không thể thêm phương tiện.");
                         }
 
-                        setVehicles((current) => [
-                          ...current,
-                          {
-                            id: result.id,
-                            bienSo: result.bienSo,
-                            hangXe: result.hangXe,
-                            loaiXe: result.loaiXe === "OTO" ? "Ô tô" : "Xe máy",
-                            gia: result.giaThueNgay,
-                            trangThai: result.trangThai || "Sẵn sàng",
-                          },
-                        ]);
-
-                        setShowVehicleForm(false);
+                        loadVehicles();
                         form.reset();
-                        alert("Thêm phương tiện thành công!");
+                        setVehicleType("OTO");
+                        setShowVehicleForm(false);
                       } catch (error) {
-                        setVehicleError(
-                          error.message || "Có lỗi khi thêm phương tiện.",
-                        );
+                        setVehicleError(error.message);
                       } finally {
                         setSavingVehicle(false);
                       }
                     }}
                   >
-                    <label>Loại xe</label>
-                    <select
-                      name="loaiXe"
-                      required
-                      value={vehicleType}
-                      onChange={(e) => setVehicleType(e.target.value)}
-                    >
-                      <option value="OTO">Ô tô</option>
-                      <option value="XEMAY">Xe máy</option>
-                    </select>
+                    <label>
+                      Loại xe
+                      <select
+                        name="loaiXe"
+                        value={vehicleType}
+                        onChange={(e) => setVehicleType(e.target.value)}
+                      >
+                        <option value="OTO">Ô tô</option>
+                        <option value="XEMAY">Xe máy</option>
+                      </select>
+                    </label>
 
-                    <label>Biển số</label>
-                    <input
-                      name="bienSo"
-                      required
-                      placeholder="Ví dụ: 30F-123.45"
-                    />
+                    <label>
+                      Biển số
+                      <input name="bienSo" placeholder="Ví dụ: 15A-12345" required />
+                    </label>
 
-                    <label>Hãng xe / Tên xe</label>
-                    <input
-                      name="hangXe"
-                      required
-                      placeholder="Ví dụ: Toyota Vios"
-                    />
+                    <label>
+                      Hãng xe
+                      <input name="hangXe" placeholder="Ví dụ: Toyota Vios" required />
+                    </label>
 
-                    <label>Giá thuê mỗi ngày (VNĐ)</label>
-                    <input
-                      name="giaThueNgay"
-                      type="number"
-                      min="1"
-                      required
-                      placeholder="800000"
-                    />
+                    <label>
+                      Giá thuê / ngày
+                      <input name="giaThueNgay" type="number" min="0" step="1000" placeholder="Ví dụ: 800000" required />
+                    </label>
 
-                    {vehicleType === "OTO" && (
+                    {vehicleType === "OTO" ? (
                       <>
-                        <label>Số chỗ</label>
-                        <input
-                          name="soCho"
-                          type="number"
-                          min="1"
-                          required
-                          defaultValue="5"
-                        />
-
-                        <label>Nhiên liệu</label>
-                        <select
-                          name="loaiNhienLieu"
-                          required
-                          defaultValue="Xang"
-                        >
-                          <option value="Xang">Xăng</option>
-                          <option value="Dau">Dầu</option>
-                          <option value="Dien">Điện</option>
-                          <option value="Hybrid">Hybrid</option>
-                        </select>
+                        <label>
+                          Số chỗ
+                          <input name="soCho" type="number" min="2" max="16" placeholder="Ví dụ: 4" required />
+                        </label>
+                        <label>
+                          Loại nhiên liệu
+                          <select name="loaiNhienLieu" defaultValue="Xăng">
+                            <option value="Xăng">Xăng</option>
+                            <option value="Dầu">Dầu</option>
+                            <option value="Điện">Điện</option>
+                          </select>
+                        </label>
+                      </>
+                    ) : (
+                      <>
+                        <label>
+                          Dung tích xi lanh (cc)
+                          <input name="dungTichXiLanh" type="number" min="50" max="2000" placeholder="Ví dụ: 125" required />
+                        </label>
+                        <label>
+                          Kiểu xe
+                          <select name="kieuXe" defaultValue="Tay ga">
+                            <option value="Tay ga">Tay ga</option>
+                            <option value="Xe số">Xe số</option>
+                            <option value="Côn tay">Côn tay</option>
+                          </select>
+                        </label>
                       </>
                     )}
 
-                    {vehicleType === "XEMAY" && (
-                      <>
-                        <label>Dung tích xi lanh (cc)</label>
-                        <input
-                          name="dungTichXiLanh"
-                          type="number"
-                          min="1"
-                          required
-                          defaultValue="150"
-                        />
+                    {vehicleError && <p className="error-text">{vehicleError}</p>}
 
-                        <label>Kiểu xe</label>
-                        <input
-                          name="kieuXe"
-                          required
-                          placeholder="Ví dụ: Tay ga"
-                        />
-                      </>
-                    )}
-                    <input name="kieuXe" placeholder="Ví dụ: Tay ga" />
-
-                    {vehicleError && (
-                      <p style={{ color: "red" }}>{vehicleError}</p>
-                    )}
-
-                    <button type="submit" disabled={savingVehicle}>
-                      {savingVehicle ? "Đang lưu..." : "Lưu phương tiện"}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowVehicleForm(false);
-                        setVehicleError("");
-                      }}
-                    >
+                    <button type="button" onClick={() => setShowVehicleForm(false)}>
                       Hủy
+                    </button>
+                    <button type="submit" disabled={savingVehicle}>
+                      {savingVehicle ? "Đang lưu..." : "Lưu"}
                     </button>
                   </form>
                 </div>
               )}
 
-              <SearchBox
-                value={keyword}
-                onChange={setKeyword}
-                placeholder="Tìm biển số hoặc hãng xe..."
-              />
+              <div className="panel-actions">
+                <input
+                  type="text"
+                  placeholder="Tìm biển số, hãng xe..."
+                  className="search-input"
+                  value={keyword}
+                  onChange={(e) => setKeyword(e.target.value)}
+                />
+              </div>
+
               <VehicleTable vehicles={filteredVehicles} />
             </section>
           )}
 
-          {page === "customers" && (
+          {adminPage === "customers" && (
             <section className="panel">
               <div className="panel-heading">
                 <div>
                   <h3>Danh sách khách hàng</h3>
-                  <p>Thông tin khách hàng đã đăng ký</p>
+                  <p>Quản lý thông tin và liên lạc của khách hàng</p>
                 </div>
-
                 <button
                   className="primary-button"
                   onClick={() => {
@@ -745,7 +838,6 @@ function App() {
               {showCustomerForm && (
                 <div className="vehicle-form">
                   <h3>Thêm khách hàng mới</h3>
-
                   <form
                     onSubmit={async (e) => {
                       e.preventDefault();
@@ -754,7 +846,6 @@ function App() {
 
                       const form = e.currentTarget;
                       const formData = new FormData(form);
-
                       const customer = {
                         hoTen: formData.get("hoTen").trim(),
                         soDienThoai: formData.get("soDienThoai").trim(),
@@ -762,93 +853,61 @@ function App() {
                       };
 
                       try {
-                        const response = await fetch(
-                          "http://localhost:8080/api/khach-hang",
-                          {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify(customer),
-                          },
-                        );
-
+                        const response = await fetch("http://localhost:8080/api/khach-hang", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify(customer),
+                        });
                         const result = await response.json();
-
                         if (!response.ok) {
-                          throw new Error(
-                            typeof result === "string"
-                              ? result
-                              : "Không thể thêm khách hàng.",
-                          );
+                          throw new Error(typeof result === "string" ? result : "Không thể thêm khách hàng.");
                         }
 
-                        setCustomers((current) => [
-                          ...current,
-                          {
-                            ...result,
-                            sdt: result.soDienThoai,
-                          },
-                        ]);
-
-                        setShowCustomerForm(false);
+                        loadCustomers();
                         form.reset();
-                        alert("Thêm khách hàng thành công!");
+                        setShowCustomerForm(false);
                       } catch (error) {
-                        setCustomerError(
-                          error.message || "Có lỗi khi thêm khách hàng.",
-                        );
+                        setCustomerError(error.message);
                       } finally {
                         setSavingCustomer(false);
                       }
                     }}
                   >
-                    <label>Họ và tên</label>
-                    <input
-                      name="hoTen"
-                      required
-                      placeholder="Ví dụ: Nguyen Van B"
-                    />
+                    <label>
+                      Họ tên
+                      <input name="hoTen" placeholder="Ví dụ: Nguyễn Văn An" required />
+                    </label>
+                    <label>
+                      Số điện thoại
+                      <input name="soDienThoai" placeholder="Ví dụ: 0987654321" required />
+                    </label>
+                    <label>
+                      Địa chỉ
+                      <input name="diaChi" placeholder="Ví dụ: Hải Phòng" required />
+                    </label>
 
-                    <label>Số điện thoại</label>
-                    <input
-                      name="soDienThoai"
-                      type="tel"
-                      required
-                      placeholder="Ví dụ: 0912345678"
-                    />
+                    {customerError && <p className="error-text">{customerError}</p>}
 
-                    <label>Địa chỉ</label>
-                    <input
-                      name="diaChi"
-                      required
-                      placeholder="Ví dụ: Hai Phong"
-                    />
-
-                    {customerError && (
-                      <p style={{ color: "red" }}>{customerError}</p>
-                    )}
-
-                    <button type="submit" disabled={savingCustomer}>
-                      {savingCustomer ? "Đang lưu..." : "Lưu khách hàng"}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowCustomerForm(false);
-                        setCustomerError("");
-                      }}
-                    >
+                    <button type="button" onClick={() => setShowCustomerForm(false)}>
                       Hủy
+                    </button>
+                    <button type="submit" disabled={savingCustomer}>
+                      {savingCustomer ? "Đang lưu..." : "Lưu"}
                     </button>
                   </form>
                 </div>
               )}
 
-              <SearchBox
-                value={keyword}
-                onChange={setKeyword}
-                placeholder="Tìm tên hoặc số điện thoại..."
-              />
+              <div className="panel-actions">
+                <input
+                  type="text"
+                  placeholder="Tìm họ tên, số điện thoại..."
+                  className="search-input"
+                  value={keyword}
+                  onChange={(e) => setKeyword(e.target.value)}
+                />
+              </div>
+
               <div className="table-wrap">
                 <table>
                   <thead>
@@ -856,7 +915,6 @@ function App() {
                       <th>KHÁCH HÀNG</th>
                       <th>SỐ ĐIỆN THOẠI</th>
                       <th>ĐỊA CHỈ</th>
-                      <th>ID</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -865,29 +923,28 @@ function App() {
                         <td>
                           <div className="customer-cell">
                             <div className="customer-avatar">
-                              {c.hoTen.split(" ").slice(-1)[0][0]}
+                              {c.hoTen.charAt(0)}
                             </div>
                             <strong>{c.hoTen}</strong>
                           </div>
                         </td>
                         <td>{c.sdt}</td>
                         <td>{c.diaChi}</td>
-                        <td>#{c.id}</td>
                       </tr>
                     ))}
-                    {filteredCustomers.length === 0 && <EmptyRow columns={4} />}
+                    {filteredCustomers.length === 0 && <EmptyRow columns={3} />}
                   </tbody>
                 </table>
               </div>
             </section>
           )}
 
-          {page === "contracts" && (
+          {adminPage === "contracts" && (
             <section className="panel">
               <div className="panel-heading">
                 <div>
-                  <h3>Quản lý hợp đồng</h3>
-                  <p>Theo dõi thời hạn thuê và tổng tiền hợp đồng</p>
+                  <h3>Danh sách hợp đồng</h3>
+                  <p>Theo dõi quá trình thuê và lịch sử giao dịch</p>
                 </div>
                 <button
                   className="primary-button"
@@ -902,8 +959,7 @@ function App() {
 
               {showContractForm && (
                 <div className="vehicle-form">
-                  <h3>Tạo hợp đồng thuê</h3>
-
+                  <h3>Tạo hợp đồng mới</h3>
                   <form
                     onSubmit={async (e) => {
                       e.preventDefault();
@@ -912,8 +968,7 @@ function App() {
 
                       const form = e.currentTarget;
                       const formData = new FormData(form);
-
-                      const requestData = {
+                      const payload = {
                         khachHangId: Number(formData.get("khachHangId")),
                         phuongTienId: Number(formData.get("phuongTienId")),
                         ngayThue: formData.get("ngayThue"),
@@ -921,137 +976,83 @@ function App() {
                       };
 
                       try {
-                        const response = await fetch(
-                          "http://localhost:8080/api/hop-dong",
-                          {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify(requestData),
-                          },
-                        );
-
-                        const responseText = await response.text();
-
-                        let result;
-
-                        try {
-                          result = responseText
-                            ? JSON.parse(responseText)
-                            : null;
-                        } catch {
-                          result = responseText;
-                        }
-
+                        const response = await fetch("http://localhost:8080/api/hop-dong", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify(payload),
+                        });
+                        const result = await response.json();
                         if (!response.ok) {
-                          throw new Error(
-                            typeof result === "string"
-                              ? result
-                              : result?.message || "Không thể tạo hợp đồng.",
-                          );
+                          throw new Error(typeof result === "string" ? result : "Không thể tạo hợp đồng.");
                         }
 
-                        const customer = customers.find(
-                          (c) => c.id === result.khachHang?.id,
-                        );
-                        const vehicle = vehicles.find(
-                          (v) => v.id === result.phuongTien?.id,
-                        );
-
-                        setContracts((current) => [
-                          ...current,
-                          {
-                            id: result.id,
-                            khachHang:
-                              result.khachHang?.hoTen ||
-                              customer?.hoTen ||
-                              "Khách hàng",
-                            phuongTien: result.phuongTien
-                              ? `${result.phuongTien.hangXe} - ${result.phuongTien.bienSo}`
-                              : vehicle
-                                ? `${vehicle.hangXe} - ${vehicle.bienSo}`
-                                : "Phương tiện",
-                            ngayThue: result.ngayThue,
-                            ngayTra: result.ngayTra,
-                            tongTien: result.tongTien,
-                            trangThai:
-                              result.trangThai === "DANG_THUE"
-                                ? "Đang thuê"
-                                : result.trangThai === "DA_TRA"
-                                  ? "Đã trả"
-                                  : result.trangThai === "DA_HUY"
-                                    ? "Đã hủy"
-                                    : result.trangThai,
-                          },
-                        ]);
-
-                        setShowContractForm(false);
+                        loadContracts();
+                        loadVehicles();
                         form.reset();
-                        alert("Tạo hợp đồng thành công!");
+                        setShowContractForm(false);
                       } catch (error) {
-                        setContractError(
-                          error.message || "Có lỗi khi tạo hợp đồng.",
-                        );
+                        setContractError(error.message);
                       } finally {
                         setSavingContract(false);
                       }
                     }}
                   >
-                    <label>Khách hàng</label>
-                    <select name="khachHangId" required defaultValue="">
-                      <option value="" disabled>
-                        -- Chọn khách hàng --
-                      </option>
-                      {customers.map((customer) => (
-                        <option key={customer.id} value={customer.id}>
-                          {customer.hoTen} - {customer.sdt}
-                        </option>
-                      ))}
-                    </select>
+                    <label>
+                      Khách hàng
+                      <select name="khachHangId" required>
+                        <option value="">-- Chọn khách hàng --</option>
+                        {customers.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.hoTen} - {c.sdt}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
 
-                    <label>Phương tiện</label>
-                    <select name="phuongTienId" required defaultValue="">
-                      <option value="" disabled>
-                        -- Chọn phương tiện --
-                      </option>
-                      {vehicles.map((vehicle) => (
-                        <option key={vehicle.id} value={vehicle.id}>
-                          {vehicle.hangXe} - {vehicle.bienSo}
-                        </option>
-                      ))}
-                    </select>
+                    <label>
+                      Phương tiện
+                      <select name="phuongTienId" required>
+                        <option value="">-- Chọn phương tiện --</option>
+                        {vehiclesWithUpdatedStatus.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {v.hangXe} ({v.bienSo}) - {v.trangThai}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
 
-                    <label>Ngày thuê</label>
-                    <input name="ngayThue" type="date" required />
+                    <label>
+                      Ngày thuê
+                      <input name="ngayThue" type="date" required />
+                    </label>
 
-                    <label>Ngày trả</label>
-                    <input name="ngayTra" type="date" required />
+                    <label>
+                      Ngày trả
+                      <input name="ngayTra" type="date" required />
+                    </label>
 
-                    {contractError && (
-                      <p style={{ color: "red" }}>{contractError}</p>
-                    )}
+                    {contractError && <p className="error-text">{contractError}</p>}
 
-                    <button type="submit" disabled={savingContract}>
-                      {savingContract ? "Đang lưu..." : "Lưu hợp đồng"}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowContractForm(false);
-                        setContractError("");
-                      }}
-                    >
+                    <button type="button" onClick={() => setShowContractForm(false)}>
                       Hủy
+                    </button>
+                    <button type="submit" disabled={savingContract}>
+                      {savingContract ? "Đang lưu..." : "Lưu"}
                     </button>
                   </form>
                 </div>
               )}
 
-              <SearchBox
-                value={keyword}
-                onChange={setKeyword}
-                placeholder="Tìm khách hàng hoặc phương tiện..."
-              />
+              <div className="panel-actions">
+                <input
+                  type="text"
+                  placeholder="Tìm khách hàng, phương tiện..."
+                  className="search-input"
+                  value={keyword}
+                  onChange={(e) => setKeyword(e.target.value)}
+                />
+              </div>
+
               <ContractTable
                 contracts={filteredContracts}
                 onReturnVehicle={handleReturnVehicle}
@@ -1061,10 +1062,6 @@ function App() {
               />
             </section>
           )}
-
-          <footer>
-            © 2026 VeloRent · Hệ thống quản lý cho thuê phương tiện
-          </footer>
         </div>
       </main>
     </div>
@@ -1073,29 +1070,13 @@ function App() {
 
 function StatCard({ title, value, icon, note, color }) {
   return (
-    <div className="stat-card">
-      <div className="stat-top">
-        <span>{title}</span>
-        <div className={`stat-icon ${color}`}>{icon}</div>
+    <div className={`stat-card ${color}`}>
+      <div className="stat-icon">{icon}</div>
+      <div className="stat-content">
+        <span className="stat-title">{title}</span>
+        <strong className="stat-value">{value}</strong>
+        <span className="stat-note">{note}</span>
       </div>
-      <strong className="stat-value">{value}</strong>
-      <div className="stat-note">
-        <span className="note-dot" />
-        {note}
-      </div>
-    </div>
-  );
-}
-
-function SearchBox({ value, onChange, placeholder }) {
-  return (
-    <div className="search-box">
-      <span>⌕</span>
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-      />
     </div>
   );
 }
@@ -1171,23 +1152,18 @@ function ContractTable({
                   HD-{String(c.id).padStart(4, "0")}
                 </span>
               </td>
-
               <td>{c.khachHang}</td>
               <td>{c.phuongTien}</td>
-
               <td>
                 <div className="date-range">
                   {c.ngayThue}
                   <span>đến {c.ngayTra}</span>
                 </div>
               </td>
-
               <td className="money-cell">{money(c.tongTien)}</td>
-
               <td>
                 <StatusBadge status={c.trangThai} />
               </td>
-
               <td>
                 {c.trangThai === "Chờ xác nhận" && (
                   <>
@@ -1197,7 +1173,6 @@ function ContractTable({
                     >
                       Duyệt yêu cầu
                     </button>
-
                     <button
                       className="secondary-button"
                       onClick={() => onRejectRequest(c.id)}
@@ -1216,7 +1191,6 @@ function ContractTable({
                     >
                       Trả xe
                     </button>
-
                     <button
                       className="secondary-button"
                       onClick={() => onCancelContract(c.id)}
@@ -1229,7 +1203,6 @@ function ContractTable({
               </td>
             </tr>
           ))}
-
           {contracts.length === 0 && <EmptyRow columns={7} />}
         </tbody>
       </table>
