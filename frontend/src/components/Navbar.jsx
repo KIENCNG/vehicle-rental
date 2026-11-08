@@ -10,19 +10,26 @@ export default function Navbar({
   onScrollTo,
 }) {
   return (
-    <header className="customer-navbar">
-      <div className="navbar-container">
+    <header className="customer-navbar premium-navbar">
+      <div className="navbar-container premium-navbar-container">
         {/* Brand */}
-        <div className="navbar-brand" onClick={() => setViewMode("client")}>
-          <div className="navbar-logo">🚘</div>
-          <div>
-            <div className="navbar-title">AutoRent</div>
-            <div className="navbar-subtitle">Thuê xe tự lái uy tín</div>
+        <button
+          type="button"
+          className="navbar-brand premium-brand"
+          onClick={() => {
+            setViewMode("client");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+        >
+          <div className="premium-logo">V</div>
+          <div className="premium-brand-text">
+            <div className="navbar-title">VeloRent</div>
+            <div className="navbar-subtitle">PREMIUM MOBILITY</div>
           </div>
-        </div>
+        </button>
 
-        {/* Links */}
-        <nav className="navbar-links">
+        {/* Navigation */}
+        <nav className="navbar-links premium-nav-links">
           <button
             type="button"
             className={`nav-link ${viewMode === "client" ? "active" : ""}`}
@@ -33,20 +40,23 @@ export default function Navbar({
           >
             Trang chủ
           </button>
+
           <button
             type="button"
             className="nav-link"
             onClick={() => onScrollTo("catalog-section")}
           >
-            Danh sách xe
+            Phương tiện
           </button>
+
           <button
             type="button"
             className="nav-link"
             onClick={() => onScrollTo("process-section")}
           >
-            Quy trình thuê
+            Quy trình
           </button>
+
           <button
             type="button"
             className="nav-link"
@@ -55,64 +65,71 @@ export default function Navbar({
             Lợi ích
           </button>
 
-          {/* Customer only: My Bookings */}
           {currentUser && (
             <button
               type="button"
               className="nav-link highlight"
               onClick={onOpenMyBookings}
             >
-              📋 Đơn thuê của tôi
+              Đơn thuê của tôi
             </button>
           )}
         </nav>
 
-        {/* Right action area */}
-        <div className="navbar-actions">
-          {/* Admin Switcher */}
+        {/* Actions */}
+        <div className="navbar-actions premium-navbar-actions">
           {currentUser?.vaiTro === "ADMIN" && (
             <button
               type="button"
-              className={`btn-admin-switch ${viewMode === "admin" ? "in-admin" : ""}`}
-              onClick={() => setViewMode(viewMode === "admin" ? "client" : "admin")}
+              className="btn-admin-switch premium-admin-switch"
+              onClick={() =>
+                setViewMode(viewMode === "admin" ? "client" : "admin")
+              }
             >
-              {viewMode === "admin" ? "🌐 Về trang khách" : "⚙️ Bảng Quản Trị"}
+              {viewMode === "admin" ? "Về trang khách" : "Bảng quản trị"}
             </button>
           )}
 
-          {/* User info or Login/Register buttons */}
           {currentUser ? (
-            <div className="user-profile-menu">
-              <div className="user-avatar">
-                {currentUser.hoTen ? currentUser.hoTen.charAt(0).toUpperCase() : "U"}
+            <div className="user-profile-menu premium-user-menu">
+              <div className="user-avatar premium-user-avatar">
+                {currentUser.hoTen
+                  ? currentUser.hoTen.charAt(0).toUpperCase()
+                  : "U"}
               </div>
+
               <div className="user-details">
-                <div className="user-name">{currentUser.hoTen || currentUser.tenDangNhap}</div>
+                <div className="user-name">
+                  {currentUser.hoTen || currentUser.tenDangNhap}
+                </div>
                 <div className="user-role-badge">
-                  {currentUser.vaiTro === "ADMIN" ? "Quản trị viên" : "Khách hàng"}
+                  {currentUser.vaiTro === "ADMIN"
+                    ? "Quản trị viên"
+                    : "Khách hàng"}
                 </div>
               </div>
+
               <button
                 type="button"
-                className="btn-logout"
-                title="Đăng xuất"
+                className="btn-logout premium-logout"
                 onClick={onLogout}
               >
                 Đăng xuất
               </button>
             </div>
           ) : (
-            <div className="auth-buttons">
+            <div className="auth-buttons premium-auth-buttons">
               <button
                 type="button"
-                className="btn-login"
+                className="btn-login premium-login"
                 onClick={() => onOpenAuth("login")}
               >
                 Đăng nhập
               </button>
+
               <button
                 type="button"
-                className="btn-register"
+                className="btn-register premium-register"
                 onClick={() => onOpenAuth("register")}
               >
                 Đăng ký
