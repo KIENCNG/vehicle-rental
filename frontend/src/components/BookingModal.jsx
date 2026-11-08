@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { money, tinhGiaThue, getVehicleImage } from "../utils/constants";
+import { apiFetch } from "../utils/api";
 
 export default function BookingModal({
   vehicle,
@@ -24,7 +25,9 @@ export default function BookingModal({
 
   // Thông tin khách hàng
   const [hoTen, setHoTen] = useState(currentUser?.hoTen || "");
-  const [soDienThoai, setSoDienThoai] = useState(currentUser?.soDienThoai || "");
+  const [soDienThoai, setSoDienThoai] = useState(
+    currentUser?.soDienThoai || "",
+  );
   const [diaChi, setDiaChi] = useState(currentUser?.diaChi || "Hải Phòng");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,70 +63,30 @@ export default function BookingModal({
     e.preventDefault();
     setErrorMessage("");
 
+    if (!currentUser || !currentUser.token) {
+      setErrorMessage("Vui lòng đăng nhập lại để tiếp tục");
+      return;
+    }
+
     if (diffDays <= 0) {
       setErrorMessage("Ngày trả xe phải sau ngày nhận xe ít nhất 1 ngày");
       return;
     }
-    if (!hoTen.trim()) {
-      setErrorMessage("Vui lòng nhập họ và tên người thuê");
-      return;
-    }
-    if (!soDienThoai.trim()) {
-      setErrorMessage("Vui lòng nhập số điện thoại");
-      return;
-    }
-    if (!diaChi.trim()) {
-      setErrorMessage("Vui lòng nhập địa chỉ liên hệ");
+
+    if (!hoTen.trim() || !soDienThoai.trim() || !diaChi.trim()) {
+      setErrorMessage("Vui lòng nhập đầy đủ thông tin liên hệ");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // 1. Lấy hoặc tạo khách hàng trong bảng khach_hang
-      let customerId = currentUser?.khachHangId;
-
-      if (!customerId) {
-        // Tìm xem sđt này đã có trong danh sách khách hàng chưa
-        const khListRes = await fetch("http://localhost:8080/api/khach-hang");
-        if (khListRes.ok) {
-          const khList = await khListRes.json();
-          const found = khList.find(
-            (k) => (k.soDienThoai || "").trim() === soDienThoai.trim(),
-          );
-          if (found) {
-            customerId = found.id;
-          }
-        }
-
-        // Nếu chưa có, tạo mới khách hàng
-        if (!customerId) {
-          const createKhRes = await fetch("http://localhost:8080/api/khach-hang", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              hoTen: hoTen.trim(),
-              soDienThoai: soDienThoai.trim(),
-              diaChi: diaChi.trim(),
-            }),
-          });
-
-          if (!createKhRes.ok) {
-            const errText = await createKhRes.text();
-            throw new Error(errText || "Không thể khởi tạo thông tin khách hàng");
-          }
-
-          const newKh = await createKhRes.json();
-          customerId = newKh.id;
-        }
-      }
-
-      // 2. Tạo yêu cầu thuê xe (trạng thái CHO_XAC_NHAN)
-      const bookingRes = await fetch("http://localhost:8080/api/hop-dong/yeu-cau", {
+      const bookingRes = await apiFetch("/api/hop-dong/yeu-cau", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
-          khachHangId: customerId,
           phuongTienId: vehicle.id,
           ngayThue,
           ngayTra,
@@ -136,12 +99,14 @@ export default function BookingModal({
       }
 
       const createdContract = await bookingRes.json();
+
       setSuccessContract(createdContract);
+
       if (onBookingSuccess) {
         onBookingSuccess(createdContract);
       }
     } catch (err) {
-      setErrorMessage(err.message || "Đã xảy ra lỗi trong quá trình đặt xe");
+      setErrorMessage(err.message || "Đã xảy ra lỗi khi đặt xe");
     } finally {
       setIsSubmitting(false);
     }
@@ -163,7 +128,9 @@ export default function BookingModal({
             <div className="success-icon-wrap">🎉</div>
             <h2 className="success-title">Đặt Xe Thành Công!</h2>
             <p className="success-subtitle">
-              Yêu cầu thuê xe của bạn đã được ghi nhận trên hệ thống. Nhân viên tư vấn của AutoRent sẽ liên hệ với bạn trong vòng 15 phút để xác nhận lịch giao xe.
+              Yêu cầu thuê xe của bạn đã được ghi nhận trên hệ thống. Nhân viên
+              tư vấn của AutoRent sẽ liên hệ với bạn trong vòng 15 phút để xác
+              nhận lịch giao xe.
             </p>
 
             <div className="contract-summary-card">
@@ -177,11 +144,15 @@ export default function BookingModal({
               <div className="summary-card-body">
                 <div className="card-row">
                   <span>Phương tiện:</span>
-                  <strong>{vehicle.hangXe} ({vehicle.bienSo})</strong>
+                  <strong>
+                    {vehicle.hangXe} ({vehicle.bienSo})
+                  </strong>
                 </div>
                 <div className="card-row">
                   <span>Khách hàng:</span>
-                  <strong>{hoTen} - {soDienThoai}</strong>
+                  <strong>
+                    {hoTen} - {soDienThoai}
+                  </strong>
                 </div>
                 <div className="card-row">
                   <span>Thời gian thuê:</span>
@@ -199,11 +170,7 @@ export default function BookingModal({
             </div>
 
             <div className="success-actions">
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={onClose}
-              >
+              <button type="button" className="btn-primary" onClick={onClose}>
                 Hoàn tất & Về trang chủ
               </button>
             </div>
@@ -214,7 +181,8 @@ export default function BookingModal({
             <div className="booking-header">
               <h2 className="booking-title">Đăng Ký Thuê Xe Trực Tuyến</h2>
               <p className="booking-subtitle">
-                Vui lòng kiểm tra kỹ thông tin và thời gian thuê để chúng tôi chuẩn bị xe tốt nhất cho bạn.
+                Vui lòng kiểm tra kỹ thông tin và thời gian thuê để chúng tôi
+                chuẩn bị xe tốt nhất cho bạn.
               </p>
             </div>
 
@@ -239,9 +207,7 @@ export default function BookingModal({
 
             {/* Cảnh báo lỗi nếu có */}
             {errorMessage && (
-              <div className="form-error-alert">
-                ⚠️ {errorMessage}
-              </div>
+              <div className="form-error-alert">⚠️ {errorMessage}</div>
             )}
 
             <div className="booking-sections-grid">
@@ -354,7 +320,9 @@ export default function BookingModal({
 
                 <div className="booking-notes">
                   <p>
-                    💡 <strong>Lưu ý:</strong> Khi nhận xe, quý khách vui lòng xuất trình CMND/CCCD và Giấy phép lái xe hợp lệ. Tiền cọc sẽ được hoàn trả 100% khi trả xe nguyên vẹn.
+                    💡 <strong>Lưu ý:</strong> Khi nhận xe, quý khách vui lòng
+                    xuất trình CMND/CCCD và Giấy phép lái xe hợp lệ. Tiền cọc sẽ
+                    được hoàn trả 100% khi trả xe nguyên vẹn.
                   </p>
                 </div>
               </div>
@@ -375,7 +343,9 @@ export default function BookingModal({
                 className="btn-primary"
                 disabled={isSubmitting || diffDays <= 0}
               >
-                {isSubmitting ? "Đang gửi yêu cầu..." : `Xác nhận đặt xe • ${money(estimatedTotal)}`}
+                {isSubmitting
+                  ? "Đang gửi yêu cầu..."
+                  : `Xác nhận đặt xe • ${money(estimatedTotal)}`}
               </button>
             </div>
           </form>

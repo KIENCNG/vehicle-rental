@@ -9,6 +9,7 @@ import com.vehiclerental.service.exception.NghiepVuException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -47,11 +48,27 @@ public class AuthHandler {
     }
 
     @GetMapping("/thong-tin/{id}")
-    public ResponseEntity<?> layThongTin(@PathVariable Long id) {
+    public ResponseEntity<?> layThongTin(
+            @PathVariable Long id,
+            Authentication authentication) {
+
         try {
-            return ResponseEntity.ok(nguoiDungService.layThongTin(id));
+            boolean laAdmin = authentication.getAuthorities()
+                    .stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+            Long idCanXem = Long.valueOf(authentication.getName());
+
+            if (laAdmin) {
+                idCanXem = id;
+            }
+
+            return ResponseEntity.ok(
+                    nguoiDungService.layThongTin(idCanXem));
+
         } catch (KhongTimThayException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(e.getMessage());
         }
     }
 }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { money } from "../utils/constants";
+import { apiFetch } from "../utils/api";
 
 export default function CustomerBookingsModal({
   currentUser,
@@ -10,42 +11,55 @@ export default function CustomerBookingsModal({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!currentUser) {
-      setLoading(false);
-      return;
-    }
+    let isMounted = true;
 
-    // Nếu user có khachHangId, gọi API lấy hợp đồng theo khachHangId
-    if (currentUser.khachHangId) {
-      fetch(`http://localhost:8080/api/hop-dong/khach-hang/${currentUser.khachHangId}`)
-        .then((res) => {
-          if (!res.ok) throw new Error("Không thể tải đơn thuê");
-          return res.json();
-        })
-        .then((data) => {
-          setUserContracts(data);
-          setLoading(false);
-        })
-        .catch((err) => {
-          console.error("Lỗi tải đơn thuê:", err);
-          // Fallback lọc từ allContracts
-          fallbackFilter();
-        });
-    } else {
-      fallbackFilter();
-    }
-
-    function fallbackFilter() {
-      if (allContracts && allContracts.length > 0) {
-        const filtered = allContracts.filter((c) => {
-          const khName = c.khachHang || "";
-          return khName.toLowerCase().includes((currentUser.hoTen || "").toLowerCase());
-        });
-        setUserContracts(filtered);
+    async function loadUserContracts() {
+      if (!currentUser) {
+        setUserContracts([]);
+        setLoading(false);
+        return;
       }
-      setLoading(false);
+
+      if (!currentUser.token) {
+        setUserContracts([]);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const res = await apiFetch(
+          `/api/hop-dong/khach-hang/${currentUser.khachHangId || 0}`,
+        );
+
+        if (!res.ok) {
+          throw new Error("Không thể tải đơn thuê");
+        }
+
+        const data = await res.json();
+
+        if (isMounted) {
+          setUserContracts(data);
+        }
+      } catch (err) {
+        console.error("Lỗi tải đơn thuê:", err);
+
+        if (isMounted) {
+          setUserContracts([]);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
     }
-  }, [currentUser, allContracts]);
+
+    setLoading(true);
+    loadUserContracts();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser]);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -63,7 +77,8 @@ export default function CustomerBookingsModal({
             <h2 className="history-title">Lịch Sử Đơn Thuê Của Bạn</h2>
             <p className="history-subtitle">
               Danh sách các hợp đồng thuê xe của tài khoản{" "}
-              <strong>{currentUser?.hoTen || currentUser?.tenDangNhap}</strong> ({currentUser?.soDienThoai})
+              <strong>{currentUser?.hoTen || currentUser?.tenDangNhap}</strong>{" "}
+              ({currentUser?.soDienThoai})
             </p>
           </div>
         </div>
@@ -78,13 +93,10 @@ export default function CustomerBookingsModal({
             <div className="empty-history-icon">🚗</div>
             <h3>Bạn chưa có đơn thuê xe nào</h3>
             <p>
-              Hãy khám phá danh mục phương tiện của AutoRent và chọn một chiếc xe phù hợp cho chuyến hành trình sắp tới!
+              Hãy khám phá danh mục phương tiện của AutoRent và chọn một chiếc
+              xe phù hợp cho chuyến hành trình sắp tới!
             </p>
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={onClose}
-            >
+            <button type="button" className="btn-primary" onClick={onClose}>
               Xem danh sách xe ngay
             </button>
           </div>
@@ -134,12 +146,14 @@ export default function CustomerBookingsModal({
 
                   {statusRaw === "CHO_XAC_NHAN" && (
                     <div className="status-note-box">
-                      ℹ️ Đơn thuê đang chờ nhân viên kiểm duyệt tình trạng xe và gọi điện xác nhận cho quý khách.
+                      ℹ️ Đơn thuê đang chờ nhân viên kiểm duyệt tình trạng xe và
+                      gọi điện xác nhận cho quý khách.
                     </div>
                   )}
                   {statusRaw === "DANG_THUE" && (
                     <div className="status-note-box active-note">
-                      🚗 Hợp đồng đang hiệu lực. Chúc quý khách có những chuyến đi thượng lộ bình an!
+                      🚗 Hợp đồng đang hiệu lực. Chúc quý khách có những chuyến
+                      đi thượng lộ bình an!
                     </div>
                   )}
                 </div>

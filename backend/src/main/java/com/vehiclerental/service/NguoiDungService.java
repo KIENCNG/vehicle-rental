@@ -18,6 +18,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 import java.util.UUID;
+import com.vehiclerental.security.JwtService;
 
 @Service
 @Transactional
@@ -25,10 +26,14 @@ public class NguoiDungService {
 
     private final NguoiDungRepository nguoiDungRepository;
     private final KhachHangRepository khachHangRepository;
-
-    public NguoiDungService(NguoiDungRepository nguoiDungRepository, KhachHangRepository khachHangRepository) {
+    private final JwtService jwtService;
+    public NguoiDungService(
+            NguoiDungRepository nguoiDungRepository,
+            KhachHangRepository khachHangRepository,
+            JwtService jwtService) {
         this.nguoiDungRepository = nguoiDungRepository;
         this.khachHangRepository = khachHangRepository;
+        this.jwtService = jwtService;
     }
 
     public AuthResponse dangNhap(DangNhapRequest request) {
@@ -130,8 +135,12 @@ public class NguoiDungService {
     }
 
     private String taoToken(NguoiDung nguoiDung) {
-        String raw = nguoiDung.getId() + ":" + nguoiDung.getTenDangNhap() + ":" + nguoiDung.getVaiTro() + ":" + UUID.randomUUID();
-        return Base64.getEncoder().encodeToString(raw.getBytes(StandardCharsets.UTF_8));
+        return jwtService.taoToken(
+                nguoiDung.getId(),
+                nguoiDung.getTenDangNhap(),
+                nguoiDung.getVaiTro().name(),
+                nguoiDung.getKhachHangId()
+        );
     }
 
     private AuthResponse chuyenSangResponse(NguoiDung nguoiDung, String token) {
