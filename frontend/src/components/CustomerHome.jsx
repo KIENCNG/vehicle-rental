@@ -40,25 +40,35 @@ export default function CustomerHome({
       .sort((a, b) => {
         if (sortBy === "PRICE_ASC") return a.gia - b.gia;
         if (sortBy === "PRICE_DESC") return b.gia - a.gia;
-        if (sortBy === "NAME_ASC") return (a.hangXe || "").localeCompare(b.hangXe || "");
+        if (sortBy === "NAME_ASC")
+          return (a.hangXe || "").localeCompare(b.hangXe || "");
         return 0;
       });
   }, [vehicles, filterType, searchKeyword, sortBy, onlyAvailable]);
 
-  const carCount = vehicles.filter((v) => v.loaiXe === "OTO" || v.loaiXe === "Ô tô").length;
-  const bikeCount = vehicles.filter((v) => v.loaiXe === "XEMAY" || v.loaiXe === "Xe máy").length;
+  const carCount = vehicles.filter(
+    (v) => v.loaiXe === "OTO" || v.loaiXe === "Ô tô",
+  ).length;
+  const bikeCount = vehicles.filter(
+    (v) => v.loaiXe === "XEMAY" || v.loaiXe === "Xe máy",
+  ).length;
 
   return (
     <div className="customer-page">
       {/* HERO SECTION */}
       <section className="hero-section">
         <div className="hero-content">
-          <div className="hero-badge">✨ Dịch vụ thuê xe tự lái số 1 Hải Phòng</div>
+          <div className="hero-badge">
+            ✨ Dịch vụ thuê xe tự lái số 1 Hải Phòng
+          </div>
           <h1 className="hero-title">
-            Trải nghiệm hành trình hoàn hảo với xe đời mới cùng <span className="text-gradient">AutoRent</span>
+            Trải nghiệm hành trình hoàn hảo với xe đời mới cùng{" "}
+            <span className="text-gradient">VeloRent</span>
           </h1>
           <p className="hero-desc">
-            Cung cấp đa dạng các dòng xe ô tô 4-7 chỗ và xe máy chất lượng cao. Đặt lịch online chỉ trong 3 phút, giao xe tận nơi miễn phí, bảo hiểm an tâm 100%.
+            Cung cấp đa dạng các dòng xe ô tô 4-7 chỗ và xe máy chất lượng cao.
+            Đặt lịch online chỉ trong 3 phút, giao xe tận nơi miễn phí, bảo hiểm
+            an tâm 100%.
           </p>
 
           <div className="hero-cta-group">
@@ -107,7 +117,8 @@ export default function CustomerHome({
           <div className="section-subtitle">DANH MỤC PHƯƠNG TIỆN</div>
           <h2 className="section-title">Chọn Chiếc Xe Cho Chuyến Đi Của Bạn</h2>
           <p className="section-desc">
-            Toàn bộ phương tiện được kiểm định định kỳ, vệ sinh sạch sẽ và đổ đầy xăng trước khi giao đến tay khách hàng.
+            Toàn bộ phương tiện được kiểm định định kỳ, vệ sinh sạch sẽ và đổ
+            đầy xăng trước khi giao đến tay khách hàng.
           </p>
         </div>
 
@@ -184,7 +195,9 @@ export default function CustomerHome({
           <div className="empty-catalog">
             <div className="empty-icon">🚗</div>
             <h3>Không tìm thấy phương tiện phù hợp</h3>
-            <p>Vui lòng thử điều chỉnh lại bộ lọc hoặc từ khóa tìm kiếm của bạn.</p>
+            <p>
+              Vui lòng thử điều chỉnh lại bộ lọc hoặc từ khóa tìm kiếm của bạn.
+            </p>
             <button
               type="button"
               className="btn-reset-filter"
@@ -200,7 +213,8 @@ export default function CustomerHome({
         ) : (
           <div className="vehicle-grid">
             {filteredVehicles.map((vehicle) => {
-              const isOto = vehicle.loaiXe === "OTO" || vehicle.loaiXe === "Ô tô";
+              const isOto =
+                vehicle.loaiXe === "OTO" || vehicle.loaiXe === "Ô tô";
               const isAvailable = vehicle.trangThai === "Sẵn sàng";
               const imageUrl = getVehicleImage(vehicle);
 
@@ -309,7 +323,8 @@ export default function CustomerHome({
             <div className="step-icon">🔍</div>
             <h3 className="step-title">Chọn Xe Ưng Ý</h3>
             <p className="step-desc">
-              Khám phá danh sách hơn 50+ dòng xe ô tô và xe máy đời mới với giá thuê minh bạch.
+              Khám phá danh sách hơn 50+ dòng xe ô tô và xe máy đời mới với giá
+              thuê minh bạch.
             </p>
           </div>
 
@@ -318,7 +333,8 @@ export default function CustomerHome({
             <div className="step-icon">📝</div>
             <h3 className="step-title">Đặt Xe Trực Tuyến</h3>
             <p className="step-desc">
-              Chọn thời gian thuê, điền thông tin liên hệ và gửi yêu cầu thuê xe trong vòng 1 phút.
+              Chọn thời gian thuê, điền thông tin liên hệ và gửi yêu cầu thuê xe
+              trong vòng 1 phút.
             </p>
           </div>
 
@@ -327,7 +343,8 @@ export default function CustomerHome({
             <div className="step-icon">🤝</div>
             <h3 className="step-title">Xác Nhận & Nhận Xe</h3>
             <p className="step-desc">
-              Nhân viên AutoRent sẽ liên hệ xác nhận và giao xe tận nơi hoặc tại văn phòng kèm hợp đồng rõ ràng.
+              Nhân viên VeloRent sẽ liên hệ xác nhận và giao xe tận nơi hoặc tại
+              văn phòng kèm hợp đồng rõ ràng.
             </p>
           </div>
 
@@ -336,7 +353,8 @@ export default function CustomerHome({
             <div className="step-icon">🎉</div>
             <h3 className="step-title">Khởi Hành & Trả Xe</h3>
             <p className="step-desc">
-              Vi vu an tâm trên mọi nẻo đường và hoàn tất thủ tục trả xe nhanh chóng, nhận lại cọc ngay lập tức.
+              Vi vu an tâm trên mọi nẻo đường và hoàn tất thủ tục trả xe nhanh
+              chóng, nhận lại cọc ngay lập tức.
             </p>
           </div>
         </div>
@@ -345,7 +363,7 @@ export default function CustomerHome({
       {/* BENEFITS SECTION */}
       <section id="benefits-section" className="benefits-section">
         <div className="section-header">
-          <div className="section-subtitle">TẠI SAO CHỌN AUTORENT?</div>
+          <div className="section-subtitle">TẠI SAO CHỌN VeloRent?</div>
           <h2 className="section-title">Cam Kết Dịch Vụ Hàng Đầu</h2>
         </div>
 
@@ -354,28 +372,32 @@ export default function CustomerHome({
             <div className="benefit-icon">🛡️</div>
             <h3>Bảo Hiểm Toàn Diện</h3>
             <p>
-              Mọi chuyến đi đều được bảo vệ với gói bảo hiểm vật chất xe và bảo hiểm người ngồi trên xe an tâm tuyệt đối.
+              Mọi chuyến đi đều được bảo vệ với gói bảo hiểm vật chất xe và bảo
+              hiểm người ngồi trên xe an tâm tuyệt đối.
             </p>
           </div>
           <div className="benefit-card">
             <div className="benefit-icon">🚀</div>
             <h3>Giao Xe Tận Nơi</h3>
             <p>
-              Hỗ trợ giao xe miễn phí tại sân bay Cát Bi, nhà ga, bến xe và các khách sạn nội thành Hải Phòng.
+              Hỗ trợ giao xe miễn phí tại sân bay Cát Bi, nhà ga, bến xe và các
+              khách sạn nội thành Hải Phòng.
             </p>
           </div>
           <div className="benefit-card">
             <div className="benefit-icon">💎</div>
             <h3>Giá Cả Niêm Yết Rõ Ràng</h3>
             <p>
-              Không phát sinh bất kỳ khoản phụ phí ẩn nào. Khách hàng luôn biết trước chính xác tổng chi phí cần thanh toán.
+              Không phát sinh bất kỳ khoản phụ phí ẩn nào. Khách hàng luôn biết
+              trước chính xác tổng chi phí cần thanh toán.
             </p>
           </div>
           <div className="benefit-card">
             <div className="benefit-icon">🔧</div>
             <h3>Bảo Trì Kỹ Lưỡng</h3>
             <p>
-              Xe được bảo dưỡng chính hãng định kỳ, thay dầu, kiểm tra lốp và hệ thống phanh trước mỗi lần xuất bến.
+              Xe được bảo dưỡng chính hãng định kỳ, thay dầu, kiểm tra lốp và hệ
+              thống phanh trước mỗi lần xuất bến.
             </p>
           </div>
         </div>
@@ -387,14 +409,19 @@ export default function CustomerHome({
           <div className="footer-col brand-col">
             <div className="footer-brand">
               <span className="footer-logo">🚘</span>
-              <span className="footer-brand-name">AutoRent Hải Phòng</span>
+              <span className="footer-brand-name">VeloRent Hải Phòng</span>
             </div>
             <p className="footer-text">
-              Hệ thống cho thuê ô tô và xe máy tự lái uy tín, chuyên nghiệp hàng đầu tại Hải Phòng và các tỉnh lân cận.
+              Hệ thống cho thuê ô tô và xe máy tự lái uy tín, chuyên nghiệp hàng
+              đầu tại Hải Phòng và các tỉnh lân cận.
             </p>
-            <div className="footer-contact-item">📍 123 Lê Hồng Phong, Ngô Quyền, TP. Hải Phòng</div>
-            <div className="footer-contact-item">📞 Hotline: 1900 6868 - 0987.654.321</div>
-            <div className="footer-contact-item">✉️ support@autorent.vn</div>
+            <div className="footer-contact-item">
+              📍 123 Lê Hồng Phong, Ngô Quyền, TP. Hải Phòng
+            </div>
+            <div className="footer-contact-item">
+              📞 Hotline: 1900 6868 - 0987.654.321
+            </div>
+            <div className="footer-contact-item">✉️ support@veloRent.vn</div>
           </div>
 
           <div className="footer-col">
@@ -420,7 +447,8 @@ export default function CustomerHome({
           <div className="footer-col">
             <h4 className="footer-title">Hỗ Trợ Nhanh</h4>
             <p className="footer-text">
-              Bạn cần tư vấn chọn dòng xe phù hợp? Đừng ngần ngại liên hệ đội ngũ chăm sóc khách hàng 24/7.
+              Bạn cần tư vấn chọn dòng xe phù hợp? Đừng ngần ngại liên hệ đội
+              ngũ chăm sóc khách hàng 24/7.
             </p>
             <a href="tel:19006868" className="btn-footer-call">
               📞 Gọi Ngay 1900 6868
@@ -429,7 +457,10 @@ export default function CustomerHome({
         </div>
 
         <div className="footer-bottom">
-          <p>© 2026 AutoRent Vietnam. Bản quyền thuộc về Hệ thống Cho Thuê Phương Tiện Giao Thông.</p>
+          <p>
+            © 2026 VeloRent Vietnam. Bản quyền thuộc về Hệ thống Cho Thuê Phương
+            Tiện Giao Thông.
+          </p>
         </div>
       </footer>
     </div>
