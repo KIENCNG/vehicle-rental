@@ -1,7 +1,9 @@
+
 package com.vehiclerental.handler;
 
 import com.vehiclerental.model.ThanhToan;
 import com.vehiclerental.service.ThanhToanService;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -34,14 +36,31 @@ public class ThanhToanHandler {
         }
     }
 
-    // Xem thanh toán theo hợp đồng
+    // Admin và khách xem thanh toán theo hợp đồng
     @GetMapping("/hop-dong/{hopDongId}")
     public ResponseEntity<?> timTheoHopDong(
             @PathVariable Long hopDongId,
             Authentication authentication) {
         try {
+            boolean laAdmin = authentication.getAuthorities()
+                    .stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+            if (laAdmin) {
+                return ResponseEntity.ok(
+                        thanhToanService.timTheoHopDong(hopDongId)
+                );
+            }
+
+            Long khachHangId = Long.valueOf(
+                    authentication.getDetails().toString()
+            );
+
             return ResponseEntity.ok(
-                    thanhToanService.timTheoHopDong(hopDongId));
+                    thanhToanService.timTheoHopDong(
+                            hopDongId, khachHangId
+                    )
+            );
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -52,10 +71,19 @@ public class ThanhToanHandler {
     public ResponseEntity<?> taoThanhToan(
             @RequestParam Long hopDongId,
             @RequestParam double soTien,
-            @RequestParam String phuongThuc) {
+            @RequestParam String phuongThuc,
+            Authentication authentication) {
         try {
+            Long khachHangId = Long.valueOf(
+                    authentication.getDetails().toString()
+            );
+
             ThanhToan thanhToan = thanhToanService.taoThanhToan(
-                    hopDongId, soTien, phuongThuc);
+                    hopDongId,
+                    soTien,
+                    phuongThuc,
+                    khachHangId
+            );
 
             return ResponseEntity.ok(thanhToan);
         } catch (IllegalArgumentException e) {
@@ -83,7 +111,6 @@ public class ThanhToanHandler {
             );
 
             return ResponseEntity.ok(thanhToan);
-
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -94,7 +121,8 @@ public class ThanhToanHandler {
     public ResponseEntity<?> xacNhanThanhToan(@PathVariable Long id) {
         try {
             return ResponseEntity.ok(
-                    thanhToanService.xacNhanThanhToan(id));
+                    thanhToanService.xacNhanThanhToan(id)
+            );
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -105,7 +133,8 @@ public class ThanhToanHandler {
     public ResponseEntity<?> huyYeuCauThanhToan(@PathVariable Long id) {
         try {
             return ResponseEntity.ok(
-                    thanhToanService.huyYeuCauThanhToan(id));
+                    thanhToanService.huyYeuCauThanhToan(id)
+            );
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
