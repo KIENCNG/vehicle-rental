@@ -1,3 +1,4 @@
+
 package com.vehiclerental.model;
 
 import jakarta.persistence.*;
@@ -20,7 +21,8 @@ public class ThanhToan {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    private TrangThaiThanhToan trangThai = TrangThaiThanhToan.CHUA_THANH_TOAN;
+    private TrangThaiThanhToan trangThai =
+            TrangThaiThanhToan.CHUA_THANH_TOAN;
 
     @Column(length = 100)
     private String phuongThuc;
@@ -38,7 +40,26 @@ public class ThanhToan {
     protected ThanhToan() {
     }
 
-    public ThanhToan(HopDongThue hopDongThue, double soTien, String phuongThuc) {
+    public ThanhToan(
+            HopDongThue hopDongThue,
+            double soTien,
+            String phuongThuc) {
+
+        if (hopDongThue == null) {
+            throw new IllegalArgumentException(
+                    "Hợp đồng thuê không được để trống");
+        }
+
+        if (soTien <= 0) {
+            throw new IllegalArgumentException(
+                    "Số tiền phải lớn hơn 0");
+        }
+
+        if (phuongThuc == null || phuongThuc.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Phương thức thanh toán không được để trống");
+        }
+
         this.hopDongThue = hopDongThue;
         this.soTien = soTien;
         this.phuongThuc = phuongThuc;
@@ -84,12 +105,26 @@ public class ThanhToan {
 
     public void setSoTien(double soTien) {
         if (soTien <= 0) {
-            throw new IllegalArgumentException("Số tiền phải lớn hơn 0");
+            throw new IllegalArgumentException(
+                    "Số tiền phải lớn hơn 0");
         }
+
+        if (trangThai == TrangThaiThanhToan.DA_THANH_TOAN
+                || trangThai == TrangThaiThanhToan.DA_HOAN_TIEN) {
+
+            throw new IllegalStateException(
+                    "Không thể thay đổi số tiền của giao dịch đã hoàn tất");
+        }
+
         this.soTien = soTien;
     }
 
     public void setPhuongThuc(String phuongThuc) {
+        if (phuongThuc == null || phuongThuc.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Phương thức thanh toán không được để trống");
+        }
+
         this.phuongThuc = phuongThuc;
     }
 
@@ -101,13 +136,52 @@ public class ThanhToan {
         this.ghiChu = ghiChu;
     }
 
-    public void setTrangThai(TrangThaiThanhToan trangThai) {
-        if (trangThai == null) {
-            throw new IllegalArgumentException("Trạng thái không được null");
+    public void setTrangThai(TrangThaiThanhToan trangThaiMoi) {
+        if (trangThaiMoi == null) {
+            throw new IllegalArgumentException(
+                    "Trạng thái không được null");
         }
-        this.trangThai = trangThai;
 
-        if (trangThai == TrangThaiThanhToan.DA_THANH_TOAN) {
+        if (this.trangThai == trangThaiMoi) {
+            throw new IllegalArgumentException(
+                    "Giao dịch đã ở trạng thái này");
+        }
+
+        boolean hopLe = false;
+
+        switch (this.trangThai) {
+
+            case CHUA_THANH_TOAN:
+                hopLe = trangThaiMoi
+                        == TrangThaiThanhToan.CHO_XAC_NHAN;
+                break;
+
+            case CHO_XAC_NHAN:
+                hopLe = trangThaiMoi
+                        == TrangThaiThanhToan.DA_THANH_TOAN
+                        || trangThaiMoi
+                        == TrangThaiThanhToan.CHUA_THANH_TOAN;
+                break;
+
+            case DA_THANH_TOAN:
+                hopLe = trangThaiMoi
+                        == TrangThaiThanhToan.DA_HOAN_TIEN;
+                break;
+
+            case DA_HOAN_TIEN:
+                hopLe = false;
+                break;
+        }
+
+        if (!hopLe) {
+            throw new IllegalStateException(
+                    "Không thể chuyển trạng thái thanh toán từ "
+                            + this.trangThai + " sang " + trangThaiMoi);
+        }
+
+        this.trangThai = trangThaiMoi;
+
+        if (trangThaiMoi == TrangThaiThanhToan.DA_THANH_TOAN) {
             this.ngayThanhToan = LocalDateTime.now();
         }
     }

@@ -3,6 +3,7 @@ package com.vehiclerental.service;
 
 import com.vehiclerental.model.HopDongThue;
 import com.vehiclerental.model.ThanhToan;
+import com.vehiclerental.model.TrangThaiHopDong;
 import com.vehiclerental.model.TrangThaiThanhToan;
 import com.vehiclerental.repository.HopDongThueRepository;
 import com.vehiclerental.repository.ThanhToanRepository;
@@ -38,7 +39,6 @@ public class ThanhToanService {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Không tìm thấy hợp đồng ID: " + hopDongId));
 
-        // Nếu có customerId thì kiểm tra quyền sở hữu
         if (khachHangId != null
                 && !hopDong.getKhachHang().getId().equals(khachHangId)) {
 
@@ -143,7 +143,15 @@ public class ThanhToanService {
         HopDongThue hopDong = kiemTraHopDong(
                 hopDongId, khachHangId);
 
-        // Tự lấy tổng tiền chính xác từ hợp đồng
+        // Chỉ hợp đồng đang thuê mới được thanh toán
+        if (hopDong.getTrangThai()
+                != TrangThaiHopDong.DANG_THUE) {
+
+            throw new IllegalArgumentException(
+                    "Chỉ hợp đồng đang thuê mới được phép thanh toán");
+        }
+
+        // Lấy số tiền trực tiếp từ hợp đồng
         double soTienChinhXac = hopDong.getTongTien();
 
         if (soTienChinhXac <= 0) {
@@ -151,7 +159,7 @@ public class ThanhToanService {
                     "Tổng tiền hợp đồng không hợp lệ");
         }
 
-        // Kiểm tra giao dịch đã tồn tại
+        // Kiểm tra giao dịch thanh toán đã tồn tại
         List<ThanhToan> danhSachThanhToan =
                 thanhToanRepository.findByHopDongThueId(hopDongId);
 
@@ -169,7 +177,7 @@ public class ThanhToanService {
             }
         }
 
-        // Tạo giao dịch bằng số tiền lấy từ hợp đồng
+        // Tạo thanh toán với số tiền lấy từ hợp đồng
         ThanhToan thanhToan = new ThanhToan(
                 hopDong,
                 soTienChinhXac,
